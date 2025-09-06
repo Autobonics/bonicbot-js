@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BonicBot Camera Control</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .camera-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .camera-view {
+            background: #000;
+            border-radius: 15px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-view img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 15px;
+        }
+
+        .camera-placeholder {
+            color: #7f8c8d;
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        .camera-controls {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #e1e8ed;
+        }
+
+        .control-group {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .control-group h3 {
+            margin-top: 0;
+            color: #34495e;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .capture-btn {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .stream-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: linear-gradient(45deg, #d5f4e6, #a8e6cf);
+            color: #27ae60;
+            border: 2px solid #27ae60;
+        }
+
+        .status.disconnected {
+            background: linear-gradient(45deg, #fadbd8, #f1948a);
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
+
+        .camera-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .gallery-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-item .overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            gap: 10px;
+        }
+
+        .input-group label {
+            min-width: 100px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            padding: 8px 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 14px;
+            flex-grow: 1;
+        }
+
+        .log {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .fullscreen-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        .fullscreen-modal img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📸 BonicBot Camera Control</h1>
+
+        <!-- Connection Status -->
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <!-- Connection Controls -->
+        <div class="control-group">
+            <h3>🔌 Connection</h3>
+            <div class="input-group">
+                <label>Host:</label>
+                <input type="text" id="host" value="localhost" placeholder="Robot IP address">
+                <label>Port:</label>
+                <input type="number" id="port" value="8080" min="1" max="65535">
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+            </div>
+        </div>
+
+        <!-- Camera Grid -->
+        <div class="camera-grid">
+            <!-- Camera View -->
+            <div class="camera-view" id="cameraView">
+                <div class="camera-placeholder">
+                    📷 Camera View<br>
+                    <small>Connect and start streaming to see robot's view</small>
+                </div>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="camera-controls">
+                <h3>📷 Camera Controls</h3>
+
+                <!-- Camera Status -->
+                <div class="camera-status">
+                    <div class="status-item">
+                        <span>Streaming:</span>
+                        <span id="streamingStatus">❌ No</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Initialized:</span>
+                        <span id="initializedStatus">❌ No</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Clients:</span>
+                        <span id="clientsCount">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Stream URL:</span>
+                        <span id="streamUrl">None</span>
+                    </div>
+                </div>
+
+                <!-- Stream Controls -->
+                <button id="startStreamBtn" class="stream-btn" disabled>🎥 Start Stream</button>
+                <button id="stopStreamBtn" class="stream-btn" disabled>⏹️ Stop Stream</button>
+                <button id="captureBtn" class="capture-btn" disabled>📸 Capture Image</button>
+                <button id="refreshStatusBtn" disabled>🔄 Refresh Status</button>
+
+                <!-- Capture Settings -->
+                <h4>⚙️ Capture Settings</h4>
+                <div class="input-group">
+                    <label>Filename:</label>
+                    <input type="text" id="filename" value="bonicbot-capture" placeholder="Filename prefix">
+                </div>
+
+                <!-- Quick Actions -->
+                <h4>🎬 Quick Actions</h4>
+                <button onclick="captureSequence()" disabled id="sequenceBtn">📷 Capture Sequence (5 photos)</button>
+                <button onclick="timelapse()" disabled id="timelapseBtn">⏰ Timelapse (10s interval)</button>
+                <button onclick="clearGallery()">🗑️ Clear Gallery</button>
+            </div>
+        </div>
+
+        <!-- Image Gallery -->
+        <div class="control-group">
+            <h3>🖼️ Captured Images</h3>
+            <div id="gallery" class="gallery">
+                <div style="grid-column: 1 / -1; text-align: center; color: #7f8c8d; padding: 20px;">
+                    No images captured yet...
+                </div>
+            </div>
+        </div>
+
+        <!-- Robot Control Integration -->
+        <div class="control-group">
+            <h3>🤖 Robot + Camera Actions</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button onclick="captureAndWave()" disabled id="wavePhotoBtn">👋 Wave & Photo</button>
+                <button onclick="lookAroundAndCapture()" disabled id="lookPhotoBtn">👀 Look Around & Capture</button>
+                <button onclick="expressionsPhotoshoot()" disabled id="expressionsBtn">😊 Expression Photoshoot</button>
+                <button onclick="panoramicCapture()" disabled id="panoramicBtn">🌅 Panoramic Capture</button>
+            </div>
+        </div>
+
+        <!-- Log -->
+        <div id="log" class="log">
+            Camera control interface ready. Connect to robot to begin...<br>
+        </div>
+    </div>
+
+    <!-- Fullscreen Modal -->
+    <div id="fullscreenModal" class="fullscreen-modal" onclick="closeFullscreen()">
+        <span class="modal-close" onclick="closeFullscreen()">&times;</span>
+        <img id="fullscreenImage" src="">
+    </div>
+
+    <!-- Include BonicBot library -->
+    <script src="https://unpkg.com/bonicbot@latest/dist/index.umd.min.js"></script>
+
+    <script>
+        let robot = null;
+        let isConnected = false;
+        let isStreaming = false;
+        let capturedImages = [];
+        let timelapseInterval = null;
+
+        // UI Elements
+        const status = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const log = document.getElementById('log');
+        const cameraView = document.getElementById('cameraView');
+        const gallery = document.getElementById('gallery');
+
+        // Camera controls
+        const startStreamBtn = document.getElementById('startStreamBtn');
+        const stopStreamBtn = document.getElementById('stopStreamBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+
+        // Status displays
+        const streamingStatus = document.getElementById('streamingStatus');
+        const initializedStatus = document.getElementById('initializedStatus');
+        const clientsCount = document.getElementById('clientsCount');
+        const streamUrl = document.getElementById('streamUrl');
+
+        // Logging function
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `[${timestamp}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Update connection status
+        function updateStatus(connected) {
+            isConnected = connected;
+            if (connected) {
+                status.textContent = 'Connected - Camera Available';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                enableCameraControls(true);
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                enableCameraControls(false);
+                updateCameraStatus(null);
+            }
+        }
+
+        // Enable/disable camera controls
+        function enableCameraControls(enabled) {
+            startStreamBtn.disabled = !enabled;
+            stopStreamBtn.disabled = !enabled || !isStreaming;
+            captureBtn.disabled = !enabled;
+            refreshStatusBtn.disabled = !enabled;
+            document.getElementById('sequenceBtn').disabled = !enabled;
+            document.getElementById('timelapseBtn').disabled = !enabled;
+            document.getElementById('wavePhotoBtn').disabled = !enabled;
+            document.getElementById('lookPhotoBtn').disabled = !enabled;
+            document.getElementById('expressionsBtn').disabled = !enabled;
+            document.getElementById('panoramicBtn').disabled = !enabled;
+        }
+
+        // Update camera status display
+        function updateCameraStatus(status) {
+            if (!status) {
+                streamingStatus.textContent = '❌ No';
+                initializedStatus.textContent = '❌ No';
+                clientsCount.textContent = '0';
+                streamUrl.textContent = 'None';
+                isStreaming = false;
+                return;
+            }
+
+            streamingStatus.textContent = status.isStreaming ? '✅ Yes' : '❌ No';
+            initializedStatus.textContent = status.isInitialized ? '✅ Yes' : '❌ No';
+            clientsCount.textContent = status.connectedClients || 0;
+            streamUrl.textContent = status.streamUrl || 'None';
+            isStreaming = status.isStreaming;
+
+            // Update button states
+            stopStreamBtn.disabled = !isStreaming;
+            startStreamBtn.disabled = isStreaming;
+        }
+
+        // Connect to robot
+        connectBtn.onclick = async () => {
+            try {
+                const host = document.getElementById('host').value.trim() || 'localhost';
+                const port = parseInt(document.getElementById('port').value) || 8080;
+
+                logMessage(`Connecting to ${host}:${port}...`);
+                robot = BonicBot.createWebSocketController(host, port);
+
+                await robot.connect();
+                updateStatus(true);
+                logMessage('Connected successfully!');
+
+                // Get initial camera status
+                await refreshCameraStatus();
+
+            } catch (error) {
+                logMessage(`Connection failed: ${error.message}`);
+                updateStatus(false);
+            }
+        };
+
+        // Disconnect
+        disconnectBtn.onclick = async () => {
+            if (robot) {
+                if (timelapseInterval) {
+                    clearInterval(timelapseInterval);
+                    timelapseInterval = null;
+                }
+                await robot.close();
+                robot = null;
+                updateStatus(false);
+                logMessage('Disconnected.');
+            }
+        };
+
+        // Refresh camera status
+        async function refreshCameraStatus() {
+            if (!robot) return;
+
+            try {
+                const status = await robot.getCameraStatus();
+                updateCameraStatus(status);
+                logMessage('Camera status updated');
+            } catch (error) {
+                logMessage(`Failed to get camera status: ${error.message}`);
+            }
+        }
+
+        // Start streaming
+        startStreamBtn.onclick = async () => {
+            if (!robot) return;
+
+            try {
+                logMessage('Starting camera stream...');
+                await robot.startCameraStream();
+                await refreshCameraStatus();
+                logMessage('Camera stream started');
+
+                // Update camera view if stream URL is available
+                const status = await robot.getCameraStatus();
+                if (status.streamUrl) {
+                    updateCameraView(status.streamUrl);
+                }
+
+            } catch (error) {
+                logMessage(`Failed to start stream: ${error.message}`);
+            }
+        };
+
+        // Stop streaming
+        stopStreamBtn.onclick = async () => {
+            if (!robot) return;
+
+            try {
+                logMessage('Stopping camera stream...');
+                await robot.stopCameraStream();
+                await refreshCameraStatus();
+                logMessage('Camera stream stopped');
+
+                // Clear camera view
+                cameraView.innerHTML = `
+                    <div class="camera-placeholder">
+                        📷 Camera View<br>
+                        <small>Start streaming to see robot's view</small>
+                    </div>
+                `;
+
+            } catch (error) {
+                logMessage(`Failed to stop stream: ${error.message}`);
+            }
+        };
+
+        // Update camera view
+        function updateCameraView(streamUrl) {
+            if (streamUrl) {
+                cameraView.innerHTML = `
+                    <img src="${streamUrl}" alt="Robot Camera Stream" style="width: 100%; height: 100%; object-fit: contain;">
+                `;
+            }
+        }
+
+        // Capture image
+        captureBtn.onclick = async () => {
+            await captureImage();
+        };
+
+        // Capture image function
+        async function captureImage(customFilename = null) {
+            if (!robot) return null;
+
+            try {
+                logMessage('Capturing image...');
+                const image = await robot.captureImage();
+
+                if (image) {
+                    const filename = customFilename || document.getElementById('filename').value || 'bonicbot-capture';
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const finalFilename = `${filename}-${timestamp}.${image.format}`;
+
+                    // Add to gallery
+                    addImageToGallery(image, finalFilename);
+
+                    logMessage(`Image captured: ${finalFilename}`);
+                    return image;
+                } else {
+                    logMessage('Failed to capture image - no data received');
+                    return null;
+                }
+
+            } catch (error) {
+                logMessage(`Capture failed: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Add image to gallery
+        function addImageToGallery(image, filename) {
+            capturedImages.push({ image, filename, timestamp: new Date() });
+            updateGallery();
+        }
+
+        // Update gallery display
+        function updateGallery() {
+            if (capturedImages.length === 0) {
+                gallery.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; color: #7f8c8d; padding: 20px;">
+                        No images captured yet...
+                    </div>
+                `;
+                return;
+            }
+
+            gallery.innerHTML = capturedImages.map((item, index) => `
+                <div class="gallery-item" onclick="showFullscreen(${index})">
+                    <img src="${item.image.toDataURL()}" alt="${item.filename}">
+                    <div class="overlay">
+                        ${item.timestamp.toLocaleTimeString()}<br>
+                        <span onclick="event.stopPropagation(); downloadImage(${index})" style="cursor: pointer;">💾 Download</span>
+                    </div>
+                </div>
+            `).reverse().join('');
+        }
+
+        // Show fullscreen image
+        function showFullscreen(index) {
+            const item = capturedImages[index];
+            document.getElementById('fullscreenImage').src = item.image.toDataURL();
+            document.getElementById('fullscreenModal').style.display = 'block';
+        }
+
+        // Close fullscreen
+        function closeFullscreen() {
+            document.getElementById('fullscreenModal').style.display = 'none';
+        }
+
+        // Download image
+        function downloadImage(index) {
+            const item = capturedImages[index];
+            item.image.download(item.filename);
+        }
+
+        // Clear gallery
+        function clearGallery() {
+            if (confirm('Clear all captured images?')) {
+                capturedImages = [];
+                updateGallery();
+                logMessage('Gallery cleared');
+            }
+        }
+
+        // Refresh status button
+        refreshStatusBtn.onclick = refreshCameraStatus;
+
+        // Quick action functions
+        async function captureSequence() {
+            if (!robot) return;
+
+            logMessage('Starting capture sequence (5 images)...');
+
+            for (let i = 1; i <= 5; i++) {
+                logMessage(`Capturing image ${i}/5...`);
+                await captureImage(`sequence-${i}`);
+
+                if (i < 5) {
+                    // Wait 2 seconds between captures
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+
+            logMessage('Capture sequence completed');
+        }
+
+        async function timelapse() {
+            if (!robot) return;
+
+            if (timelapseInterval) {
+                // Stop timelapse
+                clearInterval(timelapseInterval);
+                timelapseInterval = null;
+                document.getElementById('timelapseBtn').textContent = '⏰ Timelapse (10s interval)';
+                logMessage('Timelapse stopped');
+                return;
+            }
+
+            // Start timelapse
+            logMessage('Starting timelapse (10 second intervals)...');
+            document.getElementById('timelapseBtn').textContent = '⏹️ Stop Timelapse';
+
+            let counter = 0;
+            timelapseInterval = setInterval(async () => {
+                counter++;
+                await captureImage(`timelapse-${counter}`);
+                logMessage(`Timelapse capture ${counter}`);
+            }, 10000);
+        }
+
+        async function captureAndWave() {
+            if (!robot) return;
+
+            try {
+                logMessage('Wave and photo action...');
+
+                // Wave gesture
+                await robot.waveHello(true);
+
+                // Wait a moment then capture
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await captureImage('wave-photo');
+
+                logMessage('Wave and photo completed');
+            } catch (error) {
+                logMessage(`Wave and photo error: ${error.message}`);
+            }
+        }
+
+        async function lookAroundAndCapture() {
+            if (!robot) return;
+
+            try {
+                logMessage('Look around and capture...');
+
+                const positions = [
+                    { pan: -45, tilt: 0, name: 'left' },
+                    { pan: 0, tilt: 0, name: 'center' },
+                    { pan: 45, tilt: 0, name: 'right' },
+                    { pan: 0, tilt: 30, name: 'up' },
+                    { pan: 0, tilt: -30, name: 'down' }
+                ];
+
+                for (const pos of positions) {
+                    await robot.controlHead(pos.pan, pos.tilt);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await captureImage(`look-${pos.name}`);
+                }
+
+                // Return to center
+                await robot.controlHead(0, 0);
+
+                logMessage('Look around and capture completed');
+            } catch (error) {
+                logMessage(`Look around error: ${error.message}`);
+            }
+        }
+
+        async function expressionsPhotoshoot() {
+            if (!robot) return;
+
+            try {
+                logMessage('Expression photoshoot...');
+
+                const expressions = [
+                    { mode: BonicBot.HeadModes.NORMAL, name: 'normal' },
+                    { mode: BonicBot.HeadModes.HAPPY, name: 'happy' },
+                    { mode: BonicBot.HeadModes.SAD, name: 'sad' },
+                    { mode: BonicBot.HeadModes.ANGRY, name: 'angry' },
+                    { mode: BonicBot.HeadModes.SURPRISED, name: 'surprised' },
+                    { mode: BonicBot.HeadModes.CONFUSED, name: 'confused' }
+                ];
+
+                for (const expr of expressions) {
+                    await robot.controlHead(null, null, expr.mode);
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    await captureImage(`expression-${expr.name}`);
+                }
+
+                // Return to normal
+                await robot.controlHead(null, null, BonicBot.HeadModes.NORMAL);
+
+                logMessage('Expression photoshoot completed');
+            } catch (error) {
+                logMessage(`Expression photoshoot error: ${error.message}`);
+            }
+        }
+
+        async function panoramicCapture() {
+            if (!robot) return;
+
+            try {
+                logMessage('Panoramic capture...');
+
+                const angles = [-90, -60, -30, 0, 30, 60, 90];
+
+                for (let i = 0; i < angles.length; i++) {
+                    await robot.controlHead(angles[i], 0);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await captureImage(`panoramic-${i + 1}`);
+                }
+
+                // Return to center
+                await robot.controlHead(0, 0);
+
+                logMessage('Panoramic capture completed');
+            } catch (error) {
+                logMessage(`Panoramic capture error: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        updateStatus(false);
+        logMessage('Camera control interface loaded');
+        logMessage('Connect to robot to access camera features');
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'c':
+                        e.preventDefault();
+                        if (isConnected) captureImage();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        if (isConnected) {
+                            if (isStreaming) {
+                                stopStreamBtn.click();
+                            } else {
+                                startStreamBtn.click();
+                            }
+                        }
+                        break;
+                }
+            }
+
+            if (e.key === 'Escape') {
+                closeFullscreen();
+            }
+        });
+
+        logMessage('Keyboard shortcuts: Ctrl+C (capture), Ctrl+S (toggle stream), Esc (close fullscreen)');
+    </script>
+</body>
+
+</html>

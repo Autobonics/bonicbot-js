@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BonicBot UMD Build Test</title>
+</head>
+
+<body>
+    <h1>BonicBot UMD Build Test</h1>
+    <div id="output"></div>
+
+    <script src="./dist/index.umd.js"></script>
+    <script>
+        console.log('Testing BonicBot UMD build...');
+
+        // Test if BonicBot is available globally
+        if (typeof BonicBot !== 'undefined') {
+            console.log('✅ BonicBot is available globally');
+            document.getElementById('output').innerHTML += '<p>✅ BonicBot is available globally</p>';
+
+            // Test available functions
+            const tests = [
+                'createWebSocketController',
+                'createSerialController',
+                'isSerialSupported',
+                'isWebSocketSupported',
+                'getVersion',
+                'ServoID',
+                'HeadModes',
+                'ServoConstants'
+            ];
+
+            tests.forEach(test => {
+                if (typeof BonicBot[test] !== 'undefined') {
+                    console.log(`✅ ${test} is available`);
+                    document.getElementById('output').innerHTML += `<p>✅ ${test} is available</p>`;
+                } else {
+                    console.log(`❌ ${test} is missing`);
+                    document.getElementById('output').innerHTML += `<p>❌ ${test} is missing</p>`;
+                }
+            });
+
+            // Test creating a controller
+            try {
+                const robot = BonicBot.createWebSocketController('localhost', 8080);
+                console.log('✅ Can create WebSocket controller');
+                document.getElementById('output').innerHTML += '<p>✅ Can create WebSocket controller</p>';
+
+                // Test version
+                const version = BonicBot.getVersion();
+                console.log(`✅ Version: ${version}`);
+                document.getElementById('output').innerHTML += `<p>✅ Version: ${version}</p>`;
+
+                // Test browser support
+                const serialSupported = BonicBot.isSerialSupported();
+                const wsSupported = BonicBot.isWebSocketSupported();
+                console.log(`✅ Serial supported: ${serialSupported}`);
+                console.log(`✅ WebSocket supported: ${wsSupported}`);
+                document.getElementById('output').innerHTML += `<p>✅ Serial supported: ${serialSupported}</p>`;
+                document.getElementById('output').innerHTML += `<p>✅ WebSocket supported: ${wsSupported}</p>`;
+
+            } catch (error) {
+                console.error('❌ Error creating controller:', error);
+                document.getElementById('output').innerHTML += `<p>❌ Error creating controller: ${error.message}</p>`;
+            }
+
+        } else {
+            console.error('❌ BonicBot is not available globally');
+            document.getElementById('output').innerHTML += '<p>❌ BonicBot is not available globally</p>';
+
+            // Debug what is available
+            console.log('Available globals:', Object.keys(window).filter(key => key.includes('onic') || key.includes('obot')));
+        }
+    </script>
+</body>
+
+</html>
