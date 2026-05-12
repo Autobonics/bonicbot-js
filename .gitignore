@@ -97,3 +97,5 @@ temp/
 
 # Production
 /build
+
+npm_installation_guide.md

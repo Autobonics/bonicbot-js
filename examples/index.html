@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BonicBot JS Demo</title>
+    <script type="module">
+        import { BonicBotController } from '../src/index.js';
+
+        let bot;
+
+        window.connectBot = async () => {
+            const name = document.getElementById('name').value;
+            const host = document.getElementById('host').value;
+            
+            bot = new BonicBotController(name, host);
+            
+            document.getElementById('status').innerText = "Connecting...";
+            if (await bot.connect()) {
+                document.getElementById('status').innerText = "Connected ✅";
+                document.getElementById('controls').style.display = 'block';
+            } else {
+                document.getElementById('status').innerText = "Failed ❌";
+            }
+        };
+
+        window.move = (dir) => {
+            if (!bot) return;
+            if (dir === 'f') bot.moveForward(100);
+            if (dir === 'b') bot.moveBackward(100);
+            if (dir === 's') bot.stopMovement();
+        };
+
+        window.speak = () => {
+            const text = document.getElementById('speech').value;
+            bot.speak(text);
+        };
+    </script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #121212; color: white; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🤖 BonicBot JS Demo</h1>
+    
+    <div class="card">
+        <h3>1. Connection</h3>
+        <input id="name" value="BonicBot-S1" placeholder="BLE Name">
+        <input id="host" value="" placeholder="App IP (optional)">
+        <button onclick="connectBot()">Connect</button>
+        <p id="status">Disconnected</p>
+    </div>
+
+    <div id="controls" class="card" style="display:none">
+        <h3>2. Controls</h3>
+        <button onclick="move('f')">Forward</button>
+        <button onclick="move('s')">Stop</button>
+        <button onclick="move('b')">Backward</button>
+        <hr>
+        <input id="speech" value="Hello I am BonicBot">
+        <button onclick="speak()">Speak</button>
+    </div>
+</body>
+</html>

@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-05-11
 ### Added
-- Initial development setup
+- Unified `BonicBotController` for both BLE and App Bridge.
+- Platform-agnostic transports (Web Bluetooth + Noble).
+- Binary protocol support (0xAA 0x55) for direct hardware control.
+- Updated examples and documentation.
+- Removed deprecated Serial and WebSocket-only controllers.
 
-## [2.0.1] - 2024-12-17
 ## [2.0.4] - 2025-09-05
 
 ### Added

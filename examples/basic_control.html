@@ -4,524 +4,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BonicBot Basic Control</title>
+    <title>BonicBot Unified Control</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            background: #0f172a;
+            color: #f8fafc;
             min-height: 100vh;
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            background: #1e293b;
+            border-radius: 24px;
             padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
         }
 
         h1 {
             text-align: center;
-            color: #2c3e50;
             margin-bottom: 30px;
             font-size: 2.5em;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(to right, #38bdf8, #818cf8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         .control-group {
-            margin: 20px 0;
+            background: #334155;
             padding: 20px;
-            border: 2px solid #e1e8ed;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
+            border: 1px solid #475569;
         }
 
         .control-group h3 {
             margin-top: 0;
-            color: #34495e;
-            border-bottom: 2px solid #3498db;
+            color: #38bdf8;
+            border-bottom: 1px solid #475569;
             padding-bottom: 10px;
-        }
-
-        button {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin: 5px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .connect-btn {
-            background: linear-gradient(45deg, #27ae60, #229954);
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-        }
-
-        .disconnect-btn {
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
-        }
-
-        input[type="range"] {
-            width: 200px;
-            margin: 0 10px;
-        }
-
-        .status {
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .status.connected {
-            background: linear-gradient(45deg, #d5f4e6, #a8e6cf);
-            color: #27ae60;
-            border: 2px solid #27ae60;
-        }
-
-        .status.disconnected {
-            background: linear-gradient(45deg, #fadbd8, #f1948a);
-            color: #e74c3c;
-            border: 2px solid #e74c3c;
-        }
-
-        .log {
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 15px;
-            border-radius: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            margin-top: 20px;
-        }
-
-        .input-group {
             display: flex;
             align-items: center;
-            margin: 10px 0;
-            flex-wrap: wrap;
             gap: 10px;
         }
 
-        .input-group label {
-            min-width: 100px;
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            margin: 4px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: #2563eb; transform: translateY(-1px); }
+        button:disabled { background: #475569; cursor: not-allowed; opacity: 0.5; }
+
+        .connect-btn { background: #10b981; }
+        .connect-btn:hover { background: #059669; }
+        .disconnect-btn { background: #ef4444; }
+
+        input[type="range"] { width: 100%; accent-color: #38bdf8; }
+
+        .status {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            text-align: center;
             font-weight: bold;
-            color: #2c3e50;
+            background: #1e293b;
+            border: 2px solid #ef4444;
+            color: #ef4444;
         }
 
-        input[type="text"],
-        input[type="number"] {
-            padding: 8px 12px;
-            border: 2px solid #bdc3c7;
+        .status.connected {
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .log {
+            background: #020617;
+            color: #94a3b8;
+            padding: 15px;
+            border-radius: 12px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            margin-top: 20px;
+            border: 1px solid #334155;
+        }
+
+        .input-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"], input[type="number"] {
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: white;
+            padding: 10px;
             border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
         }
 
-        input[type="text"]:focus,
-        input[type="number"]:focus {
-            outline: none;
-            border-color: #3498db;
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            margin: 10px 0;
+        }
+
+        .pixel {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #1e293b;
+            border-radius: 2px;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>🤖 BonicBot Control Panel</h1>
+        <h1>🤖 BonicBot Unified Panel</h1>
 
-        <!-- Connection Status -->
-        <div id="status" class="status disconnected">Disconnected</div>
+        <div id="status" class="status">Disconnected</div>
 
-        <!-- Connection Controls -->
-        <div class="control-group">
-            <h3>🔌 Connection</h3>
-            <div class="input-group">
-                <label>Host:</label>
-                <input type="text" id="host" value="localhost" placeholder="Robot IP address">
-                <label>Port:</label>
-                <input type="number" id="port" value="8080" min="1" max="65535">
+        <div class="grid">
+            <!-- Connection -->
+            <div class="control-group">
+                <h3>🔌 Connection</h3>
+                <div class="input-row">
+                    <label>BLE Name:</label>
+                    <input type="text" id="deviceName" value="BonicBot-S1">
+                    <label>App IP (for WebSocket features):</label>
+                    <input type="text" id="wsHost" value="" placeholder="e.g. 192.168.1.100">
+                </div>
+                <button id="connectBtn" class="connect-btn">Connect BLE</button>
+                <button id="disconnectBtn" class="disconnect-btn" disabled>Disconnect</button>
             </div>
-            <button id="connectBtn" class="connect-btn">Connect via WebSocket</button>
-            <button id="connectSerial" class="connect-btn">Connect via Serial</button>
-            <button id="disconnectBtn" class="disconnect-btn" disabled>Disconnect</button>
-        </div>
 
-        <!-- Head Controls -->
-        <div class="control-group">
-            <h3>🗣️ Head Control</h3>
-            <div class="input-group">
+            <!-- Movement -->
+            <div class="control-group">
+                <h3>🏃 Movement</h3>
+                <div style="text-align: center;">
+                    <button onclick="move('f')">Forward</button><br>
+                    <button onclick="move('l')">Left</button>
+                    <button onclick="move('s')" style="background:#64748b">Stop</button>
+                    <button onclick="move('r')">Right</button><br>
+                    <button onclick="move('b')">Backward</button>
+                </div>
+            </div>
+
+            <!-- Head & Matrix -->
+            <div class="control-group">
+                <h3>🗣️ Head & LED Matrix</h3>
                 <label>Pan:</label>
                 <input type="range" id="headPan" min="-90" max="90" value="0">
-                <span id="panValue">0°</span>
-            </div>
-            <div class="input-group">
                 <label>Tilt:</label>
                 <input type="range" id="headTilt" min="-38" max="45" value="0">
-                <span id="tiltValue">0°</span>
+                <hr style="border-color:#475569">
+                <div class="input-row">
+                    <input type="text" id="matrixText" placeholder="Matrix Text">
+                    <button onclick="setMatrixText()">Update Matrix</button>
+                </div>
             </div>
-            <button onclick="setHeadExpression('Happy')">😊 Happy</button>
-            <button onclick="setHeadExpression('Sad')">😢 Sad</button>
-            <button onclick="setHeadExpression('Angry')">😠 Angry</button>
-            <button onclick="setHeadExpression('Surprised')">😲 Surprised</button>
-            <button onclick="setHeadExpression('Normal')">😐 Normal</button>
-        </div>
 
-        <!-- Movement Controls -->
-        <div class="control-group">
-            <h3>🏃 Movement</h3>
-            <div class="input-group">
-                <label>Speed:</label>
-                <input type="range" id="speed" min="10" max="200" value="100">
-                <span id="speedValue">100</span>
+            <!-- App Bridge -->
+            <div class="control-group">
+                <h3>📲 App Bridge Features</h3>
+                <div class="input-row">
+                    <input type="text" id="speechText" placeholder="Speak text...">
+                    <button onclick="speak()">Speak</button>
+                </div>
+                <button onclick="wave()">Wave Hello</button>
+                <button onclick="look()">Look Around</button>
+                <button onclick="reset()">Home Position</button>
             </div>
-            <button onclick="moveForward()">⬆️ Forward</button>
-            <button onclick="moveBackward()">⬇️ Backward</button>
-            <button onclick="turnLeft()">⬅️ Left</button>
-            <button onclick="turnRight()">➡️ Right</button>
-            <button onclick="stopMovement()">⏹️ Stop</button>
         </div>
 
-        <!-- Hand Controls -->
-        <div class="control-group">
-            <h3>🖐️ Hand Control</h3>
-            <button onclick="waveHello(true)">👋 Wave Right</button>
-            <button onclick="waveHello(false)">👋 Wave Left</button>
-            <button onclick="openGripper(true)">🖐️ Open Right Gripper</button>
-            <button onclick="closeGripper(true)">✊ Close Right Gripper</button>
-            <button onclick="openGripper(false)">🖐️ Open Left Gripper</button>
-            <button onclick="closeGripper(false)">✊ Close Left Gripper</button>
-        </div>
-
-        <!-- Speech and Actions -->
-        <div class="control-group">
-            <h3>🔊 Speech & Actions</h3>
-            <div class="input-group">
-                <input type="text" id="speechText" placeholder="Enter text to speak..." value="Hello, I am BonicBot!">
-                <button onclick="speak()">🗣️ Speak</button>
-            </div>
-            <button onclick="lookAround()">👀 Look Around</button>
-            <button onclick="resetPosition()">🏠 Reset Position</button>
-        </div>
-
-        <!-- Log -->
-        <div id="log" class="log">
-            Ready to connect to BonicBot...<br>
-        </div>
+        <div id="log" class="log">Initializing BonicBot v3.0...</div>
     </div>
 
-    <!-- Include BonicBot library -->
-    <script src="https://unpkg.com/bonicbot@2.0.4/dist/index.umd.min.js"></script>
+    <script type="module">
+        import { BonicBotController } from '../src/index.js';
 
-    <script>
-        let robot = null;
-        let isConnected = false;
+        let bot = null;
 
-        // UI Elements
-        const status = document.getElementById('status');
-        const connectBtn = document.getElementById('connectBtn');
-        const connectSerial = document.getElementById('connectSerial');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const log = document.getElementById('log');
-        const hostInput = document.getElementById('host');
-        const portInput = document.getElementById('port');
-
-        // Sliders
-        const headPan = document.getElementById('headPan');
-        const headTilt = document.getElementById('headTilt');
-        const speed = document.getElementById('speed');
-        const panValue = document.getElementById('panValue');
-        const tiltValue = document.getElementById('tiltValue');
-        const speedValue = document.getElementById('speedValue');
-
-        // Update slider displays
-        headPan.oninput = () => {
-            panValue.textContent = headPan.value + '°';
-            if (isConnected) controlHead();
+        const log = (msg) => {
+            const time = new Date().toLocaleTimeString();
+            const logEl = document.getElementById('log');
+            logEl.innerHTML += `<div><span style="color:#64748b">[${time}]</span> ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
         };
 
-        headTilt.oninput = () => {
-            tiltValue.textContent = headTilt.value + '°';
-            if (isConnected) controlHead();
+        const updateUI = (connected) => {
+            document.getElementById('status').innerText = connected ? "Connected ✅" : "Disconnected ❌";
+            document.getElementById('status').className = connected ? "status connected" : "status";
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
         };
 
-        speed.oninput = () => {
-            speedValue.textContent = speed.value;
-        };
-
-        // Logging function
-        function logMessage(message) {
-            const timestamp = new Date().toLocaleTimeString();
-            log.innerHTML += `[${timestamp}] ${message}<br>`;
-            log.scrollTop = log.scrollHeight;
-        }
-
-        // Update connection status
-        function updateStatus(connected) {
-            isConnected = connected;
-            if (connected) {
-                status.textContent = 'Connected';
-                status.className = 'status connected';
-                connectBtn.disabled = true;
-                connectSerial.disabled = true;
-                disconnectBtn.disabled = false;
-            } else {
-                status.textContent = 'Disconnected';
-                status.className = 'status disconnected';
-                connectBtn.disabled = false;
-                connectSerial.disabled = false;
-                disconnectBtn.disabled = true;
-            }
-        }
-
-        // Connect via WebSocket
-        connectBtn.onclick = async () => {
-            try {
-                const host = hostInput.value.trim() || 'localhost';
-                const port = parseInt(portInput.value) || 8080;
-
-                logMessage(`Connecting to ${host}:${port}...`);
-                robot = BonicBot.createWebSocketController(host, port);
-
-                await robot.connect();
-                updateStatus(true);
-                logMessage('Connected successfully via WebSocket!');
-
-                // Set up sensor monitoring
-                robot.registerSensorListener('battery', 'ui-monitor', (data) => {
-                    if (data.soc !== undefined) {
-                        logMessage(`Battery: ${data.soc}%`);
-                    }
+        document.getElementById('connectBtn').onclick = async () => {
+            const name = document.getElementById('deviceName').value;
+            const host = document.getElementById('wsHost').value;
+            
+            bot = new BonicBotController(name, host);
+            log(`Starting discovery for "${name}"...`);
+            
+            if (await bot.connect()) {
+                log("Successfully connected to BonicBot!");
+                updateUI(true);
+                
+                bot.registerSensorListener('battery', 'ui', (data) => {
+                    log(`Battery Update: ${data.soc}% (${data.voltage}V)`);
                 });
-
-            } catch (error) {
-                logMessage(`Connection failed: ${error.message}`);
-                updateStatus(false);
+            } else {
+                log("Connection failed. Make sure Bluetooth is enabled.");
             }
         };
 
-        // Connect via Serial
-        connectSerial.onclick = async () => {
-            try {
-                if (!BonicBot.isSerialSupported()) {
-                    alert('Web Serial API is not supported in this browser. Try Chrome/Edge.');
-                    return;
-                }
-
-                logMessage('Requesting serial port...');
-                robot = BonicBot.createSerialController({ baudrate: 115200 });
-
-                await robot.connect();
-                updateStatus(true);
-                logMessage('Connected successfully via Serial!');
-
-            } catch (error) {
-                logMessage(`Serial connection failed: ${error.message}`);
-                updateStatus(false);
-            }
+        document.getElementById('disconnectBtn').onclick = async () => {
+            await bot.close();
+            updateUI(false);
+            log("Disconnected.");
         };
 
-        // Disconnect
-        disconnectBtn.onclick = async () => {
-            if (robot) {
-                await robot.close();
-                robot = null;
-                updateStatus(false);
-                logMessage('Disconnected.');
-            }
+        // Movement
+        window.move = (dir) => {
+            if (!bot) return;
+            if (dir === 'f') bot.moveForward(100);
+            if (dir === 'b') bot.moveBackward(100);
+            if (dir === 'l') bot.turnLeft(80);
+            if (dir === 'r') bot.turnRight(80);
+            if (dir === 's') bot.stopMovement();
         };
 
-        // Robot control functions
-        async function controlHead() {
-            if (!robot) return;
-            try {
-                const pan = parseFloat(headPan.value);
-                const tilt = parseFloat(headTilt.value);
-                await robot.controlHead(pan, tilt);
-                logMessage(`Head: Pan=${pan}°, Tilt=${tilt}°`);
-            } catch (error) {
-                logMessage(`Head control error: ${error.message}`);
-            }
-        }
+        // Head
+        const updateHead = () => {
+            if (!bot) return;
+            bot.controlHead(
+                parseInt(document.getElementById('headPan').value),
+                parseInt(document.getElementById('headTilt').value)
+            );
+        };
+        document.getElementById('headPan').oninput = updateHead;
+        document.getElementById('headTilt').oninput = updateHead;
 
-        async function setHeadExpression(mode) {
-            if (!robot) return;
-            try {
-                await robot.controlHead(null, null, BonicBot.HeadModes[mode.toUpperCase()]);
-                logMessage(`Set head expression: ${mode}`);
-            } catch (error) {
-                logMessage(`Expression error: ${error.message}`);
-            }
-        }
+        // Matrix
+        window.setMatrixText = () => {
+            const text = document.getElementById('matrixText').value;
+            bot.setDisplayText(text);
+            log(`Matrix set to: "${text}"`);
+        };
 
-        async function moveForward() {
-            if (!robot) return;
+        // App Bridge
+        window.speak = () => {
             try {
-                const moveSpeed = parseInt(speed.value);
-                await robot.moveForward(moveSpeed, 1);
-                logMessage(`Moving forward at speed ${moveSpeed} for 1 second`);
-            } catch (error) {
-                logMessage(`Movement error: ${error.message}`);
-            }
-        }
+                const text = document.getElementById('speechText').value;
+                bot.speak(text);
+                log(`Speaking: "${text}"`);
+            } catch (e) { log(`Error: ${e.message}`); }
+        };
 
-        async function moveBackward() {
-            if (!robot) return;
-            try {
-                const moveSpeed = parseInt(speed.value);
-                await robot.moveBackward(moveSpeed, 1);
-                logMessage(`Moving backward at speed ${moveSpeed} for 1 second`);
-            } catch (error) {
-                logMessage(`Movement error: ${error.message}`);
-            }
-        }
-
-        async function turnLeft() {
-            if (!robot) return;
-            try {
-                const moveSpeed = parseInt(speed.value);
-                await robot.turnLeft(moveSpeed, 1);
-                logMessage(`Turning left at speed ${moveSpeed} for 1 second`);
-            } catch (error) {
-                logMessage(`Turn error: ${error.message}`);
-            }
-        }
-
-        async function turnRight() {
-            if (!robot) return;
-            try {
-                const moveSpeed = parseInt(speed.value);
-                await robot.turnRight(moveSpeed, 1);
-                logMessage(`Turning right at speed ${moveSpeed} for 1 second`);
-            } catch (error) {
-                logMessage(`Turn error: ${error.message}`);
-            }
-        }
-
-        async function stopMovement() {
-            if (!robot) return;
-            try {
-                await robot.stopMovement();
-                logMessage('Stopped movement');
-            } catch (error) {
-                logMessage(`Stop error: ${error.message}`);
-            }
-        }
-
-        async function waveHello(rightHand) {
-            if (!robot) return;
-            try {
-                await robot.waveHello(rightHand);
-                logMessage(`Waving with ${rightHand ? 'right' : 'left'} hand`);
-            } catch (error) {
-                logMessage(`Wave error: ${error.message}`);
-            }
-        }
-
-        async function openGripper(rightHand) {
-            if (!robot) return;
-            try {
-                if (rightHand) {
-                    await robot.controlRightHand({ gripper: 90 });
-                } else {
-                    await robot.controlLeftHand({ gripper: 90 });
-                }
-                logMessage(`Opened ${rightHand ? 'right' : 'left'} gripper`);
-            } catch (error) {
-                logMessage(`Gripper error: ${error.message}`);
-            }
-        }
-
-        async function closeGripper(rightHand) {
-            if (!robot) return;
-            try {
-                if (rightHand) {
-                    await robot.controlRightHand({ gripper: -90 });
-                } else {
-                    await robot.controlLeftHand({ gripper: -90 });
-                }
-                logMessage(`Closed ${rightHand ? 'right' : 'left'} gripper`);
-            } catch (error) {
-                logMessage(`Gripper error: ${error.message}`);
-            }
-        }
-
-        async function speak() {
-            if (!robot) return;
-            try {
-                const text = document.getElementById('speechText').value.trim();
-                if (!text) {
-                    alert('Please enter text to speak');
-                    return;
-                }
-                await robot.speak(text);
-                logMessage(`Speaking: "${text}"`);
-            } catch (error) {
-                logMessage(`Speech error: ${error.message}`);
-            }
-        }
-
-        async function lookAround() {
-            if (!robot) return;
-            try {
-                await robot.lookAround();
-                logMessage('Looking around...');
-            } catch (error) {
-                logMessage(`Look around error: ${error.message}`);
-            }
-        }
-
-        async function resetPosition() {
-            if (!robot) return;
-            try {
-                await robot.resetToHomePosition();
-                logMessage('Reset to home position');
-                // Reset UI sliders
-                headPan.value = 0;
-                headTilt.value = 0;
-                panValue.textContent = '0°';
-                tiltValue.textContent = '0°';
-            } catch (error) {
-                logMessage(`Reset error: ${error.message}`);
-            }
-        }
-
-        // Initialize
-        logMessage('BonicBot Control Panel loaded');
-        logMessage(`Serial API supported: ${BonicBot.isSerialSupported()}`);
-        logMessage(`WebSocket supported: ${BonicBot.isWebSocketSupported()}`);
+        window.wave = () => bot?.waveHello();
+        window.look = () => bot?.lookAround();
+        window.reset = () => bot?.resetToHomePosition();
     </script>
 </body>
-
 </html>

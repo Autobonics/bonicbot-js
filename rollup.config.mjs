@@ -4,6 +4,8 @@ import terser from '@rollup/plugin-terser';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const external = ['@abandonware/noble', 'ws'];
+
 export default [
     // ESM build
     {
@@ -13,6 +15,7 @@ export default [
             format: 'esm',
             sourcemap: true
         },
+        external,
         plugins: [
             resolve({
                 browser: true,
@@ -33,6 +36,7 @@ export default [
             sourcemap: true,
             exports: 'auto'
         },
+        external,
         plugins: [
             resolve({
                 browser: true,
@@ -53,6 +57,7 @@ export default [
             sourcemap: true,
             exports: 'auto'
         },
+        external,
         plugins: [
             resolve({
                 browser: true,

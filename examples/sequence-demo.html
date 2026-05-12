@@ -1,680 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BonicBot Sequence Demo</title>
+    <title>BonicBot Sequences</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: #333;
-            min-height: 100vh;
+        body { font-family: system-ui, sans-serif; background: #0f172a; color: white; padding: 40px; }
+        .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 24px; }
+        .seq-list { margin-top: 20px; }
+        .seq-item { 
+            background: #334155; padding: 15px; margin: 10px 0; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
         }
-
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
-
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-            background: linear-gradient(45deg, #74b9ff, #0984e3);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .control-group {
-            margin: 20px 0;
-            padding: 20px;
-            border: 2px solid #e1e8ed;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.8);
-        }
-
-        .control-group h3 {
-            margin-top: 0;
-            color: #34495e;
-            border-bottom: 2px solid #74b9ff;
-            padding-bottom: 10px;
-        }
-
-        button {
-            background: linear-gradient(45deg, #74b9ff, #0984e3);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin: 5px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(116, 185, 255, 0.4);
-        }
-
-        button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .sequence-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            padding: 10px;
-            background: #f8f9fa;
-        }
-
-        .sequence-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            margin: 10px 0;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #74b9ff;
-        }
-
-        .sequence-info {
-            flex-grow: 1;
-        }
-
-        .sequence-name {
-            font-weight: bold;
-            color: #2c3e50;
-            font-size: 16px;
-        }
-
-        .sequence-details {
-            color: #7f8c8d;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .status-bar {
-            background: #34495e;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #ecf0f1;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(45deg, #27ae60, #2ecc71);
-            transition: width 0.3s ease;
-            border-radius: 10px;
-        }
-
-        .control-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .play-btn {
-            background: linear-gradient(45deg, #27ae60, #2ecc71);
-        }
-
-        .pause-btn {
-            background: linear-gradient(45deg, #f39c12, #e67e22);
-        }
-
-        .stop-btn {
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
-        }
-
-        .step-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 0;
-        }
-
-        input[type="number"] {
-            padding: 8px;
-            border: 2px solid #bdc3c7;
-            border-radius: 5px;
-            width: 80px;
-            text-align: center;
-        }
-
-        .log {
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 15px;
-            border-radius: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            margin-top: 20px;
-        }
-
-        .status {
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .status.connected {
-            background: linear-gradient(45deg, #d5f4e6, #a8e6cf);
-            color: #27ae60;
-            border: 2px solid #27ae60;
-        }
-
-        .status.disconnected {
-            background: linear-gradient(45deg, #fadbd8, #f1948a);
-            color: #e74c3c;
-            border: 2px solid #e74c3c;
-        }
-
-        .input-group {
-            display: flex;
-            align-items: center;
-            margin: 10px 0;
-            gap: 10px;
-        }
-
-        .input-group label {
-            min-width: 100px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        input[type="text"] {
-            padding: 8px 12px;
-            border: 2px solid #bdc3c7;
-            border-radius: 8px;
-            font-size: 14px;
-            flex-grow: 1;
-        }
+        button { background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .stop-btn { background: #ef4444; }
+        #status-card { background: #0f172a; padding: 15px; border-radius: 12px; margin-top: 20px; border: 1px solid #334155; }
     </style>
 </head>
-
 <body>
     <div class="container">
-        <h1>🎬 BonicBot Sequence Demo</h1>
-
-        <!-- Connection Status -->
-        <div id="status" class="status disconnected">Disconnected</div>
-
-        <!-- Connection Controls -->
-        <div class="control-group">
-            <h3>🔌 Connection</h3>
-            <div class="input-group">
-                <label>Host:</label>
-                <input type="text" id="host" value="localhost" placeholder="Robot IP address">
-                <label>Port:</label>
-                <input type="number" id="port" value="8080" min="1" max="65535">
-                <button id="connectBtn">Connect</button>
-                <button id="disconnectBtn" disabled>Disconnect</button>
-            </div>
+        <h1>🎭 Motion Sequences</h1>
+        <div id="connection">
+            <input type="text" id="wsHost" placeholder="App IP (e.g. 192.168.1.100)" style="padding:10px; border-radius:8px;">
+            <button onclick="connect()">Load Sequences</button>
         </div>
 
-        <!-- Sequence Status -->
-        <div class="control-group">
-            <h3>📊 Sequence Status</h3>
-            <div class="status-bar">
-                <div><strong>Current Sequence:</strong> <span id="currentSequence">None</span></div>
-                <div><strong>Step:</strong> <span id="currentStep">0</span> / <span id="totalSteps">0</span></div>
-                <div class="progress-bar">
-                    <div id="progressFill" class="progress-fill" style="width: 0%"></div>
-                </div>
-                <div><strong>Status:</strong>
-                    <span id="playbackStatus">Stopped</span> |
-                    Available Sequences: <span id="availableCount">0</span>
-                </div>
-            </div>
+        <div id="status-card" style="display:none">
+            <strong>Now Playing:</strong> <span id="current-seq">None</span>
+            <div id="progress">Step: 0 / 0</div>
+            <button onclick="stop()" class="stop-btn">Stop All</button>
         </div>
 
-        <!-- Playback Controls -->
-        <div class="control-group">
-            <h3>🎮 Playback Controls</h3>
-            <div class="control-buttons">
-                <button id="playBtn" class="play-btn" disabled>▶️ Play</button>
-                <button id="pauseBtn" class="pause-btn" disabled>⏸️ Pause</button>
-                <button id="resumeBtn" class="pause-btn" disabled>▶️ Resume</button>
-                <button id="stopBtn" class="stop-btn" disabled>⏹️ Stop</button>
-                <button id="refreshBtn">🔄 Refresh Sequences</button>
-            </div>
-
-            <div class="step-control">
-                <label>Jump to Step:</label>
-                <input type="number" id="jumpStep" min="0" value="0">
-                <button id="jumpBtn" disabled>🎯 Jump</button>
-            </div>
-        </div>
-
-        <!-- Available Sequences -->
-        <div class="control-group">
-            <h3>📝 Available Sequences</h3>
-            <div id="sequenceList" class="sequence-list">
-                <div style="text-align: center; color: #7f8c8d; padding: 20px;">
-                    Connect to robot to load sequences...
-                </div>
-            </div>
-        </div>
-
-        <!-- Custom Sequence Creation -->
-        <div class="control-group">
-            <h3>➕ Quick Actions</h3>
-            <div class="control-buttons">
-                <button onclick="createWaveSequence()">👋 Create Wave Sequence</button>
-                <button onclick="createLookSequence()">👀 Create Look Around</button>
-                <button onclick="createDanceSequence()">💃 Create Dance Moves</button>
-                <button onclick="demonstrateGestures()">🤲 Demonstrate Gestures</button>
-            </div>
-        </div>
-
-        <!-- Log -->
-        <div id="log" class="log">
-            Sequence demo ready. Connect to robot to begin...<br>
-        </div>
+        <div id="seq-list" class="seq-list"></div>
     </div>
 
-    <!-- Include BonicBot library -->
-    <script src="https://unpkg.com/bonicbot@latest/dist/index.umd.min.js"></script>
+    <script type="module">
+        import { BonicBotController } from '../src/index.js';
 
-    <script>
-        let robot = null;
-        let isConnected = false;
-        let statusUpdateInterval = null;
+        let bot = null;
 
-        // UI Elements
-        const status = document.getElementById('status');
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const log = document.getElementById('log');
-        const sequenceList = document.getElementById('sequenceList');
-
-        // Status elements
-        const currentSequence = document.getElementById('currentSequence');
-        const currentStep = document.getElementById('currentStep');
-        const totalSteps = document.getElementById('totalSteps');
-        const progressFill = document.getElementById('progressFill');
-        const playbackStatus = document.getElementById('playbackStatus');
-        const availableCount = document.getElementById('availableCount');
-
-        // Control buttons
-        const playBtn = document.getElementById('playBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const resumeBtn = document.getElementById('resumeBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const jumpBtn = document.getElementById('jumpBtn');
-        const jumpStep = document.getElementById('jumpStep');
-
-        let selectedSequence = null;
-        let sequences = [];
-
-        // Logging function
-        function logMessage(message) {
-            const timestamp = new Date().toLocaleTimeString();
-            log.innerHTML += `[${timestamp}] ${message}<br>`;
-            log.scrollTop = log.scrollHeight;
-        }
-
-        // Update connection status
-        function updateStatus(connected) {
-            isConnected = connected;
-            if (connected) {
-                status.textContent = 'Connected';
-                status.className = 'status connected';
-                connectBtn.disabled = true;
-                disconnectBtn.disabled = false;
-                refreshBtn.disabled = false;
-                startStatusUpdates();
-            } else {
-                status.textContent = 'Disconnected';
-                status.className = 'status disconnected';
-                connectBtn.disabled = false;
-                disconnectBtn.disabled = true;
-                refreshBtn.disabled = true;
-                stopStatusUpdates();
-                updatePlaybackButtons(false);
-            }
-        }
-
-        // Start periodic status updates
-        function startStatusUpdates() {
-            statusUpdateInterval = setInterval(async () => {
-                if (robot && isConnected) {
-                    try {
-                        const status = await robot.getSequenceStatus();
-                        updateSequenceStatus(status);
-                    } catch (error) {
-                        // Ignore errors during status updates
+        window.connect = async () => {
+            const host = document.getElementById('wsHost').value;
+            bot = new BonicBotController("BonicBot-S1", host);
+            
+            if (await bot.bridge.connect()) {
+                document.getElementById('connection').style.display = 'none';
+                document.getElementById('status-card').style.display = 'block';
+                loadSequences();
+                
+                // Monitor status
+                bot.registerSensorListener('status', 'ui', (data) => {
+                    if (data.sequenceStatus) {
+                        const status = data.sequenceStatus;
+                        document.getElementById('current-seq').innerText = status.currentSequence || "None";
+                        document.getElementById('progress').innerText = `Step: ${status.currentStep} / ${status.totalSteps}`;
                     }
-                }
-            }, 1000);
-        }
-
-        // Stop status updates
-        function stopStatusUpdates() {
-            if (statusUpdateInterval) {
-                clearInterval(statusUpdateInterval);
-                statusUpdateInterval = null;
-            }
-        }
-
-        // Update sequence status display
-        function updateSequenceStatus(status) {
-            currentSequence.textContent = status.currentSequence || 'None';
-            currentStep.textContent = status.currentStep;
-            totalSteps.textContent = status.totalSteps;
-            availableCount.textContent = status.availableSequenceCount;
-
-            const progress = status.totalSteps > 0 ? (status.currentStep / status.totalSteps) * 100 : 0;
-            progressFill.style.width = `${progress}%`;
-
-            let statusText = 'Stopped';
-            if (status.isPlaying) {
-                statusText = status.isPaused ? 'Paused' : 'Playing';
-            } else if (status.isRecording) {
-                statusText = 'Recording';
-            }
-            playbackStatus.textContent = statusText;
-
-            // Update button states
-            updatePlaybackButtons(status.isPlaying);
-
-            // Update jump step max
-            jumpStep.max = status.totalSteps;
-        }
-
-        // Update playback button states
-        function updatePlaybackButtons(isPlaying) {
-            playBtn.disabled = !selectedSequence || isPlaying;
-            pauseBtn.disabled = !isPlaying;
-            resumeBtn.disabled = !isPlaying; // Will be enabled only when paused
-            stopBtn.disabled = !isPlaying;
-            jumpBtn.disabled = !isPlaying;
-        }
-
-        // Connect to robot
-        connectBtn.onclick = async () => {
-            try {
-                const host = document.getElementById('host').value.trim() || 'localhost';
-                const port = parseInt(document.getElementById('port').value) || 8080;
-
-                logMessage(`Connecting to ${host}:${port}...`);
-                robot = BonicBot.createWebSocketController(host, port);
-
-                await robot.connect();
-                updateStatus(true);
-                logMessage('Connected successfully!');
-
-                // Load sequences automatically
-                await loadSequences();
-
-            } catch (error) {
-                logMessage(`Connection failed: ${error.message}`);
-                updateStatus(false);
+                });
             }
         };
 
-        // Disconnect
-        disconnectBtn.onclick = async () => {
-            if (robot) {
-                await robot.close();
-                robot = null;
-                updateStatus(false);
-                logMessage('Disconnected.');
-                sequences = [];
-                updateSequenceList();
-            }
-        };
-
-        // Load available sequences
         async function loadSequences() {
-            if (!robot) return;
-
-            try {
-                logMessage('Loading sequences...');
-                sequences = await robot.getSequences();
-                updateSequenceList();
-                logMessage(`Loaded ${sequences.length} sequences`);
-            } catch (error) {
-                logMessage(`Failed to load sequences: ${error.message}`);
-            }
-        }
-
-        // Update sequence list display
-        function updateSequenceList() {
-            if (sequences.length === 0) {
-                sequenceList.innerHTML = `
-                    <div style="text-align: center; color: #7f8c8d; padding: 20px;">
-                        ${isConnected ? 'No sequences available' : 'Connect to robot to load sequences...'}
-                    </div>
-                `;
-                return;
-            }
-
-            sequenceList.innerHTML = sequences.map(seq => `
-                <div class="sequence-item" onclick="selectSequence('${seq.id}', '${seq.name}')">
-                    <div class="sequence-info">
-                        <div class="sequence-name">${seq.name}</div>
-                        <div class="sequence-details">
-                            ${seq.stepCount} steps | ${seq.duration}ms | ${seq.isLoop ? 'Loop' : 'Once'} | 
-                            Created: ${new Date(seq.createdAt).toLocaleString()}
-                        </div>
-                        <div class="sequence-details">${seq.description}</div>
-                    </div>
-                    <div class="control-buttons">
-                        <button class="play-btn" onclick="event.stopPropagation(); playSequenceById('${seq.id}', '${seq.name}')">
-                            ▶️ Play
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Select sequence
-        function selectSequence(id, name) {
-            selectedSequence = { id, name };
-            logMessage(`Selected sequence: ${name}`);
-
-            // Highlight selected sequence
-            document.querySelectorAll('.sequence-item').forEach(item => {
-                item.style.backgroundColor = 'white';
+            // In a real app, you'd call bot.getSequences()
+            // For now, we'll demonstrate playing by name
+            const demoSeqs = ["Greeting", "Happy Dance", "Sad Slump", "Victory"];
+            const listEl = document.getElementById('seq-list');
+            
+            demoSeqs.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'seq-item';
+                div.innerHTML = `<span>${name}</span> <button onclick="play('${name}')">Play</button>`;
+                listEl.appendChild(div);
             });
-            event.currentTarget.style.backgroundColor = '#e3f2fd';
-
-            updatePlaybackButtons(false);
         }
 
-        // Play sequence by ID
-        async function playSequenceById(id, name) {
-            if (!robot) return;
-
-            try {
-                logMessage(`Playing sequence: ${name}`);
-                await robot.playSequence(name, id);
-                updatePlaybackButtons(true);
-            } catch (error) {
-                logMessage(`Failed to play sequence: ${error.message}`);
-            }
-        }
-
-        // Playback control event handlers
-        playBtn.onclick = async () => {
-            if (!robot || !selectedSequence) return;
-
-            try {
-                await robot.playSequence(selectedSequence.name, selectedSequence.id);
-                logMessage(`Playing: ${selectedSequence.name}`);
-            } catch (error) {
-                logMessage(`Play error: ${error.message}`);
-            }
-        };
-
-        pauseBtn.onclick = async () => {
-            if (!robot) return;
-
-            try {
-                await robot.pauseSequence();
-                logMessage('Sequence paused');
-            } catch (error) {
-                logMessage(`Pause error: ${error.message}`);
-            }
-        };
-
-        resumeBtn.onclick = async () => {
-            if (!robot) return;
-
-            try {
-                await robot.resumeSequence();
-                logMessage('Sequence resumed');
-            } catch (error) {
-                logMessage(`Resume error: ${error.message}`);
-            }
-        };
-
-        stopBtn.onclick = async () => {
-            if (!robot) return;
-
-            try {
-                await robot.stopSequence();
-                logMessage('Sequence stopped');
-                updatePlaybackButtons(false);
-            } catch (error) {
-                logMessage(`Stop error: ${error.message}`);
-            }
-        };
-
-        refreshBtn.onclick = loadSequences;
-
-        jumpBtn.onclick = async () => {
-            if (!robot) return;
-
-            try {
-                const step = parseInt(jumpStep.value);
-                await robot.jumpToStep(step);
-                logMessage(`Jumped to step ${step}`);
-            } catch (error) {
-                logMessage(`Jump error: ${error.message}`);
-            }
-        };
-
-        // Quick action functions
-        async function createWaveSequence() {
-            if (!robot) return;
-
-            try {
-                logMessage('Executing wave sequence...');
-                await robot.waveHello(true);
-                logMessage('Wave sequence completed');
-            } catch (error) {
-                logMessage(`Wave error: ${error.message}`);
-            }
-        }
-
-        async function createLookSequence() {
-            if (!robot) return;
-
-            try {
-                logMessage('Executing look around sequence...');
-                await robot.lookAround();
-                logMessage('Look around completed');
-            } catch (error) {
-                logMessage(`Look around error: ${error.message}`);
-            }
-        }
-
-        async function createDanceSequence() {
-            if (!robot) return;
-
-            try {
-                logMessage('Executing dance sequence...');
-
-                // Simple dance moves
-                for (let i = 0; i < 3; i++) {
-                    await robot.controlRightHand({ shoulderPitch: 90, shoulderRoll: 45 });
-                    await robot.controlLeftHand({ shoulderPitch: 90, shoulderRoll: -45 });
-                    await new Promise(resolve => setTimeout(resolve, 500));
-
-                    await robot.controlRightHand({ shoulderPitch: 0, shoulderRoll: 0 });
-                    await robot.controlLeftHand({ shoulderPitch: 0, shoulderRoll: 0 });
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-
-                logMessage('Dance sequence completed');
-            } catch (error) {
-                logMessage(`Dance error: ${error.message}`);
-            }
-        }
-
-        async function demonstrateGestures() {
-            if (!robot) return;
-
-            try {
-                logMessage('Demonstrating gestures...');
-
-                // Greeting gesture
-                await robot.speak('Hello! Let me show you some gestures.');
-                await robot.waveHello(true);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Thinking gesture
-                await robot.speak('Hmm, let me think...');
-                await robot.controlHead(null, null, BonicBot.HeadModes.CONFUSED);
-                await robot.controlRightHand({ elbow: -45, wrist: 45 });
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                // Happy gesture
-                await robot.speak('I got it!');
-                await robot.controlHead(null, null, BonicBot.HeadModes.HAPPY);
-                await robot.controlRightHand({ shoulderPitch: 90 });
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Reset
-                await robot.resetToHomePosition();
-                await robot.speak('That was fun!');
-
-                logMessage('Gesture demonstration completed');
-            } catch (error) {
-                logMessage(`Gesture demo error: ${error.message}`);
-            }
-        }
-
-        // Initialize
-        logMessage('Sequence demo loaded');
-        logMessage('Connect to robot to explore sequence control');
+        window.play = (name) => bot?.playSequence(name);
+        window.stop = () => bot?.stopSequence();
     </script>
 </body>
-
 </html>

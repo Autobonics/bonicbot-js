@@ -1,10 +1,9 @@
 {
     "name": "bonicbot",
-    "version": "2.0.4",
-    "description": "JavaScript library for controlling BonicBot humanoid robot via serial and WebSocket communication with sequence and camera support",
-    "main": "dist/index.js",
-    "module": "src/index.js",
-    "types": "dist/index.d.ts",
+    "version": "3.0.0",
+    "description": "Unified JavaScript library for controlling BonicBot via BLE and WebSocket Bridge",
+    "main": "dist/index.umd.js",
+    "module": "dist/index.esm.js",
     "scripts": {
         "build": "rollup -c",
         "dev": "rollup -c -w",
@@ -19,11 +18,12 @@
         "humanoid",
         "servo",
         "websocket",
-        "serial",
+        "ble",
+        "bluetooth",
         "browser",
         "automation"
     ],
-    "author": "Shahir Abdulla <shahir@autobonics.com>",
+    "author": "Autobonics Team <admin@autobonics.com>",
     "license": "MIT",
     "repository": {
         "type": "git",
@@ -39,9 +39,7 @@
         "README.md",
         "LICENSE"
     ],
-    "browser": {
-        "serial": false
-    },
+    "browser": {},
     "devDependencies": {
         "@babel/preset-env": "^7.28.3",
         "@rollup/plugin-commonjs": "^24.1.0",
@@ -61,6 +59,8 @@
         "not dead"
     ],
     "dependencies": {
-        "bonicbot": "^2.0.3"
+        "@abandonware/noble": "^1.9.2-16",
+        "bonicbot": "^3.0.0",
+        "ws": "^8.18.0"
     }
 }

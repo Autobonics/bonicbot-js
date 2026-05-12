@@ -1,894 +1,467 @@
 /**
- * BonicBot Controller Module
- * 
- * Provides both serial and WebSocket communication interfaces for controlling
- * BonicBot humanoid robots with comprehensive sequence and camera support.
+ * Unified BonicBot Controller for Direct BLE and App Bridge (WebSocket)
  */
 
-import { CommunicationType, ServoID, HeadModes, MotorType, SequenceAction, CameraAction } from './enums.js';
-import { ServoConstants } from './constants.js';
+import BleTransport from './transports/ble.js';
+import WebSocketTransport from './transports/websocket.js';
 import {
-    ServoCommand,
-    HeadCommand,
-    HandCommand,
-    BaseCommand,
-    ServoReading,
-    BatteryReading,
-    MotorReading,
-    SequenceInfo,
-    SequenceStatus,
-    CameraStatus,
-    CapturedImage
+    COMMAND_TYPES, RESPONSE_TYPES, SERVO_MAP, ServoConstants, BLE_SERVICE_FRAGMENTS
+} from './constants.js';
+import {
+    MatrixAction, SequenceAction, CameraAction, HeadModeIds
+} from './enums.js';
+import { 
+    BatteryReading, SequenceInfo, SequenceStatus, 
+    CameraStatus, CapturedImage 
 } from './types.js';
 
-/**
- * Base controller class providing common interface for both
- * serial and WebSocket communication with BonicBot.
- */
-export class BonicBotController {
-    constructor(communicationType) {
-        this.communicationType = communicationType;
-        this.connected = false;
-    }
-
-    // Abstract methods to be implemented by subclasses
-    async connect() {
-        throw new Error('Subclasses must implement connect()');
-    }
-
-    async close() {
-        throw new Error('Subclasses must implement close()');
-    }
-
-    isConnected() {
-        return this.connected;
-    }
-
+class BonicBotController {
     /**
-     * Control individual servo
+     * @param {string} deviceName - BLE name (e.g. 'BonicBot-S1')
+     * @param {string} [wsHost] - IP of Android device for App Bridge
+     * @param {number} [wsPort=8080] - WebSocket port
      */
-    async controlServo(servoId, angle, speed = null, acceleration = null) {
-        const cmd = new ServoCommand(
-            servoId,
-            angle,
-            speed || ServoConstants.DEFAULT_SPEED,
-            acceleration || ServoConstants.DEFAULT_ACCELERATION
-        );
-
-        if (!cmd.validateAngle()) {
-            console.error(`Servo ${servoId} angle ${angle} is out of bounds`);
-            return false;
-        }
-
-        return this._sendServoCommand(cmd);
-    }
-
-    // Abstract method for sending servo commands
-    async _sendServoCommand(cmd) {
-        throw new Error('Subclasses must implement _sendServoCommand()');
-    }
-
-    // Convenience methods
-    async controlHead(panAngle = null, tiltAngle = null, mode = null, speed = null) {
-        let result = true;
-        if (panAngle !== null) {
-            result &= await this.controlServo(ServoID.HEAD_PAN, panAngle, speed);
-        }
-        if (tiltAngle !== null) {
-            result &= await this.controlServo(ServoID.HEAD_TILT, tiltAngle, speed);
-        }
-        if (mode !== null) {
-            result &= await this._setHeadMode(mode);
-        }
-        return result;
-    }
-
-    async controlRightHand({
-        gripper = null,
-        wrist = null,
-        elbow = null,
-        shoulderPitch = null,
-        shoulderYaw = null,
-        shoulderRoll = null,
-        speed = null
-    } = {}) {
-        let result = true;
-        if (gripper !== null) {
-            result &= await this.controlServo(ServoID.RIGHT_GRIPPER, gripper, speed);
-        }
-        if (wrist !== null) {
-            result &= await this.controlServo(ServoID.RIGHT_WRIST, wrist, speed);
-        }
-        if (elbow !== null) {
-            result &= await this.controlServo(ServoID.RIGHT_ELBOW, elbow, speed);
-        }
-        if (shoulderPitch !== null) {
-            result &= await this.controlServo(ServoID.RIGHT_SHOULDER_PITCH, shoulderPitch, speed);
-        }
-        if (shoulderYaw !== null) {
-            result &= await this.controlServo(ServoID.RIGHT_SHOULDER_YAW, shoulderYaw, speed);
-        }
-        if (shoulderRoll !== null) {
-            result &= await this.controlServo(ServoID.RIGHT_SHOULDER_ROLL, shoulderRoll, speed);
-        }
-        return result;
-    }
-
-    async controlLeftHand({
-        gripper = null,
-        wrist = null,
-        elbow = null,
-        shoulderPitch = null,
-        shoulderYaw = null,
-        shoulderRoll = null,
-        speed = null
-    } = {}) {
-        let result = true;
-        if (gripper !== null) {
-            result &= await this.controlServo(ServoID.LEFT_GRIPPER, gripper, speed);
-        }
-        if (wrist !== null) {
-            result &= await this.controlServo(ServoID.LEFT_WRIST, wrist, speed);
-        }
-        if (elbow !== null) {
-            result &= await this.controlServo(ServoID.LEFT_ELBOW, elbow, speed);
-        }
-        if (shoulderPitch !== null) {
-            result &= await this.controlServo(ServoID.LEFT_SHOULDER_PITCH, shoulderPitch, speed);
-        }
-        if (shoulderYaw !== null) {
-            result &= await this.controlServo(ServoID.LEFT_SHOULDER_YAW, shoulderYaw, speed);
-        }
-        if (shoulderRoll !== null) {
-            result &= await this.controlServo(ServoID.LEFT_SHOULDER_ROLL, shoulderRoll, speed);
-        }
-        return result;
-    }
-
-    async moveForward(speed = 100.0, duration = null) {
-        return this._moveBase(speed, speed, duration);
-    }
-
-    async moveBackward(speed = 100.0, duration = null) {
-        return this._moveBase(-speed, -speed, duration);
-    }
-
-    async turnLeft(speed = 100.0, duration = null) {
-        return this._moveBase(-speed, speed, duration);
-    }
-
-    async turnRight(speed = 100.0, duration = null) {
-        return this._moveBase(speed, -speed, duration);
-    }
-
-    async stopMovement() {
-        return this._moveBase(0, 0);
-    }
-
-    // Abstract methods
-    async _setHeadMode(mode) {
-        throw new Error('Subclasses must implement _setHeadMode()');
-    }
-
-    async _moveBase(leftSpeed, rightSpeed, duration = null) {
-        throw new Error('Subclasses must implement _moveBase()');
-    }
-}
-
-/**
- * Serial communication implementation for BonicBot control.
- * Uses Web Serial API for browser compatibility.
- */
-export class SerialBonicBotController extends BonicBotController {
-    constructor(options = {}) {
-        super(CommunicationType.SERIAL);
-        this.baudrate = options.baudrate || 115200;
-        this.port = null;
-        this.reader = null;
-        this.writer = null;
-        this.readableStreamClosed = null;
-        this.writableStreamClosed = null;
-    }
-
-    async connect() {
-        if (!('serial' in navigator)) {
-            throw new Error('Web Serial API is not supported in this browser');
-        }
-
-        try {
-            // Request a port and open a connection
-            this.port = await navigator.serial.requestPort();
-            await this.port.open({ baudRate: this.baudrate });
-
-            // Set up reader and writer
-            const textDecoder = new TextDecoderStream();
-            this.readableStreamClosed = this.port.readable.pipeTo(textDecoder.writable);
-            this.reader = textDecoder.readable.getReader();
-
-            const textEncoder = new TextEncoderStream();
-            this.writableStreamClosed = textEncoder.readable.pipeTo(this.port.writable);
-            this.writer = textEncoder.writable.getWriter();
-
-            this.connected = true;
-            console.log('Connected to robot via serial');
-            return true;
-        } catch (error) {
-            console.error('Failed to connect to serial port:', error);
-            return false;
-        }
-    }
-
-    async close() {
-        if (this.connected && this.port) {
-            try {
-                if (this.reader) {
-                    await this.reader.cancel();
-                    await this.readableStreamClosed.catch(() => { /* Ignore error */ });
-                }
-
-                if (this.writer) {
-                    await this.writer.close();
-                    await this.writableStreamClosed;
-                }
-
-                await this.port.close();
-                this.connected = false;
-                console.log('Serial connection closed');
-            } catch (error) {
-                console.error('Error closing serial connection:', error);
-            }
-        }
-    }
-
-    async _sendServoCommand(cmd) {
-        if (!this.connected || !this.writer) {
-            console.error('Not connected to robot');
-            return false;
-        }
-
-        try {
-            const commandStr = `SERVO:${cmd.id}:${cmd.angle}:${cmd.speed}:${cmd.acc}\n`;
-            await this.writer.write(commandStr);
-            return true;
-        } catch (error) {
-            console.error('Failed to send servo command:', error);
-            return false;
-        }
-    }
-
-    async _setHeadMode(mode) {
-        if (!this.connected || !this.writer) {
-            console.error('Not connected to robot');
-            return false;
-        }
-
-        try {
-            const commandStr = `HEAD_MODE:${mode}\n`;
-            await this.writer.write(commandStr);
-            return true;
-        } catch (error) {
-            console.error('Failed to set head mode:', error);
-            return false;
-        }
-    }
-
-    async _moveBase(leftSpeed, rightSpeed, duration = null) {
-        if (!this.connected || !this.writer) {
-            console.error('Not connected to robot');
-            return false;
-        }
-
-        try {
-            const commandStr = `BASE:${leftSpeed}:${rightSpeed}\n`;
-            await this.writer.write(commandStr);
-
-            if (duration) {
-                setTimeout(async () => {
-                    const stopCommand = 'BASE:0:0\n';
-                    await this.writer.write(stopCommand);
-                }, duration * 1000);
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Failed to move base:', error);
-            return false;
-        }
-    }
-
-    async readSensorData() {
-        if (!this.connected || !this.reader) {
-            return null;
-        }
-
-        try {
-            const { value, done } = await this.reader.read();
-            if (done) {
-                return null;
-            }
-            return value.trim();
-        } catch (error) {
-            console.error('Error reading sensor data:', error);
-            return null;
-        }
-    }
-
-    // Serial doesn't support sequence/camera operations
-    async speak(text) {
-        console.warn('Speak function not supported in serial mode');
-        return false;
-    }
-
-    async getSequences() {
-        console.warn('Sequence operations not supported in serial mode');
-        return [];
-    }
-}
-
-/**
- * WebSocket communication implementation for BonicBot control.
- * Provides enhanced sensor monitoring, sequence control, and camera operations.
- */
-export class WebSocketBonicBotController extends BonicBotController {
-    constructor(host = 'localhost', port = 8080) {
-        super(CommunicationType.WEBSOCKET);
-        this.host = host;
-        this.port = port;
-        this.websocket = null;
-        this.clientId = null;
-        this.robotStatus = {};
-
-        // Enhanced sensor data storage
+    constructor(deviceName, wsHost = null, wsPort = 8080) {
+        this.deviceName = deviceName;
+        this.ble = new BleTransport();
+        this.bridge = wsHost ? new WebSocketTransport(wsHost, wsPort) : null;
+        
         this.latestSensorData = {
-            battery: null,
-            leftHand: null,
-            rightHand: null,
-            head: null,
-            base: null,
-            distance: null,
-            sequence: null,
-            camera: null
+            battery: new BatteryReading(),
+            distance: 0,
+            base: { leftMotor: {}, rightMotor: {} },
+            head: {}, leftHand: {}, rightHand: {}
         };
-        this.sensorHistory = {};
-        this.sensorListeners = {};
-        this.messageCallbacks = {};
-
-        // Sequence and camera status
+        
         this.sequenceStatus = new SequenceStatus();
         this.cameraStatus = new CameraStatus();
+        this.sensorListeners = {};
+        this._buffer = new Uint8Array(0);
+        this._latestBridgeData = {};
+
+        this.ble.onData = (data) => this._onBleData(data);
+        if (this.bridge) {
+            this.bridge.onMessage = (msg) => this._onBridgeMessage(msg);
+        }
     }
 
     async connect() {
-        try {
-            const uri = `ws://${this.host}:${this.port}`;
-            console.log(`Connecting to robot at ${uri}`);
-
-            this.websocket = new WebSocket(uri);
-
-            return new Promise((resolve, reject) => {
-                this.websocket.onopen = () => {
-                    this.connected = true;
-                    this._setupMessageHandler();
-                    console.log('Connected to robot WebSocket server');
-                    resolve(true);
-                };
-
-                this.websocket.onerror = (error) => {
-                    console.error('WebSocket connection error:', error);
-                    reject(false);
-                };
-
-                this.websocket.onclose = () => {
-                    this.connected = false;
-                    console.log('WebSocket connection closed');
-                };
-            });
-        } catch (error) {
-            console.error('Failed to connect:', error);
-            return false;
+        console.log(`Connecting to ${this.deviceName}...`);
+        const bleSuccess = await this.ble.connect(this.deviceName);
+        if (bleSuccess && this.bridge) {
+            await this.bridge.connect();
         }
+        return bleSuccess;
     }
 
     async close() {
-        if (this.websocket && this.connected) {
-            this.websocket.close();
-            this.connected = false;
-            console.log('Disconnected from robot WebSocket server');
-        }
+        await this.ble.disconnect();
+        if (this.bridge) this.bridge.disconnect();
     }
 
-    _setupMessageHandler() {
-        this.websocket.onmessage = async (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                await this._processMessage(data);
-            } catch (error) {
-                console.error('Error processing message:', error);
-            }
-        };
+    async disconnect() { return this.close(); }
+
+    get isConnected() { return this.ble.connected; }
+
+    // ============ BLE PACKET BUILDERS ============
+
+    _buildPacket(type, payload = new Uint8Array(0)) {
+        const frame = new Uint8Array(5 + payload.length);
+        frame[0] = 0xAA;
+        frame[1] = 0x55;
+        frame[2] = type;
+        frame[3] = payload.length & 0xFF;
+        frame[4] = (payload.length >> 8) & 0xFF;
+        frame.set(payload, 5);
+        return frame;
     }
 
-    async _processMessage(data) {
-        const messageType = data.type;
-
-        if (messageType === 'welcome') {
-            this.clientId = data.clientId;
-            this.robotStatus = data.robotStatus || {};
-            this._updateStatusFromRobotData(this.robotStatus);
-            console.log(`Welcome message received. Client ID: ${this.clientId}`);
-
-        } else if (messageType === 'response') {
-            const success = data.success || false;
-            const commandType = data.commandType;
-            const dataType = data.dataType;
-            const result = data.result;
-
-            if (success) {
-                console.debug(`Command successful: ${commandType}/${dataType}`);
-                if (result) {
-                    this._storeSensorData(dataType, result);
-                }
-            } else {
-                const errorMsg = data.error || 'Unknown error';
-                console.error(`Command failed: ${commandType}/${dataType} - ${errorMsg}`);
-            }
-
-        } else if (messageType === 'continuousData') {
-            const dataType = data.dataType;
-            const sensorData = data.data;
-            this._storeSensorData(dataType, sensorData);
-
-        } else if (messageType === 'robotUpdate') {
-            this.robotStatus = data.data || {};
-            this._updateStatusFromRobotData(this.robotStatus);
-
-        } else if (messageType === 'sequenceUpdate') {
-            const sequenceData = data.data || {};
-            this._updateSequenceStatus(sequenceData);
-
-        } else if (messageType === 'error') {
-            const errorMsg = data.error;
-            console.error(`Server error: ${errorMsg}`);
-        }
-
-        // Trigger message callbacks
-        if (this.messageCallbacks[messageType]) {
-            this.messageCallbacks[messageType].forEach(callback => {
-                try {
-                    callback(data);
-                } catch (error) {
-                    console.error('Error in message callback:', error);
-                }
-            });
-        }
+    async _send(packet) {
+        return await this.ble.send(packet);
     }
 
-    _updateStatusFromRobotData(robotData) {
-        // Update sequence status
-        const sequenceStatus = robotData.sequenceStatus;
-        if (sequenceStatus) {
-            this._updateSequenceStatus(sequenceStatus);
-        }
+    // ============ HARDWARE METHODS (BLE) ============
 
-        // Update camera status
-        const cameraStatus = robotData.cameraStatus;
-        if (cameraStatus) {
-            this.cameraStatus = new CameraStatus({
-                isStreaming: cameraStatus.isStreaming || false,
-                isInitialized: cameraStatus.isInitialized || false,
-                connectedClients: cameraStatus.connectedClients || 0,
-                streamUrl: cameraStatus.streamUrl
-            });
-        }
+    async controlServo(servoId, angle, speed = ServoConstants.DEFAULT_SPEED, acc = ServoConstants.DEFAULT_ACC) {
+        const id = typeof servoId === 'string' ? SERVO_MAP[servoId] : servoId;
+        if (!id) throw new Error(`Invalid Servo ID: ${servoId}`);
+
+        // 9 bytes: id(u8), action(u8), angle(f32-le), speed(u16-le), acc(u8)
+        const payload = new Uint8Array(9);
+        const dv = new DataView(payload.buffer);
+        dv.setUint8(0, id);
+        dv.setUint8(1, 0);              // action = MOVE
+        dv.setFloat32(2, angle, true);
+        dv.setUint16(6, speed, true);
+        dv.setUint8(8, acc);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_SERVO_SINGLE, payload));
     }
 
-    _updateSequenceStatus(sequenceData) {
-        this.sequenceStatus = new SequenceStatus({
-            isPlaying: sequenceData.isPlaying || false,
-            isPaused: sequenceData.isPaused || false,
-            isRecording: sequenceData.isRecording || false,
-            currentSequence: sequenceData.currentSequence,
-            currentStep: sequenceData.currentStep || 0,
-            totalSteps: sequenceData.totalSteps || 0,
-            playbackProgress: sequenceData.playbackProgress || 0.0,
-            availableSequenceCount: sequenceData.availableSequenceCount || 0
-        });
-    }
-
-    _storeSensorData(dataType, sensorData) {
-        if (!sensorData) return;
-
-        const storageKey = this._getStorageKey(dataType);
-        if (storageKey) {
-            // Store latest data
-            this.latestSensorData[storageKey] = {
-                data: sensorData,
-                timestamp: new Date(),
-                dataType: dataType
-            };
-
-            // Store in history (keep last 100 readings)
-            if (!this.sensorHistory[storageKey]) {
-                this.sensorHistory[storageKey] = [];
-            }
-
-            this.sensorHistory[storageKey].push({
-                data: sensorData,
-                timestamp: new Date()
-            });
-
-            if (this.sensorHistory[storageKey].length > 100) {
-                this.sensorHistory[storageKey] = this.sensorHistory[storageKey].slice(-100);
-            }
-
-            // Trigger listeners
-            this._triggerListeners(storageKey, sensorData);
+    async controlHead(pan = null, tilt = null, mode = null, speed = ServoConstants.DEFAULT_SPEED) {
+        if (mode !== null) {
+            const modeId = HeadModeIds[mode] ?? 1;
+            if (!await this._send(this._buildPacket(COMMAND_TYPES.CMD_HEAD_MODE, new Uint8Array([modeId])))) return false;
         }
-    }
-
-    _getStorageKey(dataType) {
-        const mapping = {
-            'RobotDataType.battery': 'battery',
-            'RobotDataType.leftHand': 'leftHand',
-            'RobotDataType.rightHand': 'rightHand',
-            'RobotDataType.head': 'head',
-            'RobotDataType.base': 'base',
-            'RobotDataType.distance': 'distance',
-            'battery': 'battery',
-            'lefthand': 'leftHand',
-            'righthand': 'rightHand',
-            'head': 'head',
-            'base': 'base',
-            'distance': 'distance',
-            'sequence': 'sequence',
-            'camera': 'camera'
-        };
-        return mapping[dataType];
-    }
-
-    _triggerListeners(storageKey, sensorData) {
-        if (this.sensorListeners[storageKey]) {
-            Object.values(this.sensorListeners[storageKey]).forEach(listenerConfig => {
-                try {
-                    const callback = listenerConfig.callback;
-                    const dataFilter = listenerConfig.filter;
-
-                    if (dataFilter && typeof dataFilter === 'function') {
-                        if (!dataFilter(sensorData)) {
-                            return;
-                        }
-                    }
-
-                    callback(sensorData);
-                } catch (error) {
-                    console.error('Error in sensor listener:', error);
-                }
-            });
-        }
-    }
-
-    async _sendCommand(commandType, dataType, payload = {}, interval = 0) {
-        if (!this.connected || !this.websocket) {
-            console.error('Not connected to robot');
-            return false;
-        }
-
-        const message = {
-            commandType: commandType,
-            dataType: dataType,
-            payload: payload,
-            interval: interval
-        };
-
-        try {
-            this.websocket.send(JSON.stringify(message));
-            return true;
-        } catch (error) {
-            console.error('Failed to send command:', error);
-            return false;
-        }
-    }
-
-    async _sendServoCommand(cmd) {
-        const payload = {
-            id: cmd.id,
-            angle: cmd.angle,
-            speed: cmd.speed,
-            acc: cmd.acc
-        };
-        return this._sendCommand('command', 'servo', payload);
-    }
-
-    async _setHeadMode(mode) {
-        const payload = { mode: mode };
-        return this._sendCommand('command', 'head', payload);
-    }
-
-    async _moveBase(leftSpeed, rightSpeed, duration = null) {
-        const payload = {
-            leftMotor: { currentSpeed: leftSpeed, type: MotorType.GEAR_MOTOR },
-            rightMotor: { currentSpeed: rightSpeed, type: MotorType.GEAR_MOTOR }
-        };
-        const result = await this._sendCommand('command', 'base', payload);
-
-        if (duration && result) {
-            setTimeout(async () => {
-                const stopPayload = {
-                    leftMotor: { currentSpeed: 0, type: MotorType.GEAR_MOTOR },
-                    rightMotor: { currentSpeed: 0, type: MotorType.GEAR_MOTOR }
-                };
-                await this._sendCommand('command', 'base', stopPayload);
-            }, duration * 1000);
-        }
-
-        return result;
-    }
-
-    // Enhanced sensor monitoring methods
-    registerSensorListener(sensorType, listenerId, callback, dataFilter = null) {
-        if (!this.latestSensorData.hasOwnProperty(sensorType)) {
-            console.error(`Invalid sensor type: ${sensorType}`);
-            return false;
-        }
-
-        if (!this.sensorListeners[sensorType]) {
-            this.sensorListeners[sensorType] = {};
-        }
-
-        this.sensorListeners[sensorType][listenerId] = {
-            callback: callback,
-            filter: dataFilter,
-            registeredAt: new Date()
-        };
-
-        console.log(`Registered listener ${listenerId} for ${sensorType}`);
+        if (pan !== null && !await this.controlServo('headPan', pan, speed)) return false;
+        if (tilt !== null && !await this.controlServo('headTilt', tilt, speed)) return false;
         return true;
     }
 
-    getLatestSensorData(sensorType) {
-        return this.latestSensorData[sensorType];
-    }
+    async controlHand(side, angles = {}) {
+        const prefix = side === 'left' ? 'left' : 'right';
+        const speed = angles.speed != null ? angles.speed : ServoConstants.DEFAULT_SPEED;
+        const acc = angles.acc != null ? angles.acc : ServoConstants.DEFAULT_ACC;
 
-    getBatteryStatus() {
-        const data = this.getLatestSensorData('battery');
-        if (data && data.data) {
-            const batteryData = data.data;
-            return new BatteryReading({
-                voltage: batteryData.voltage || 0,
-                current: batteryData.current || 0,
-                soc: batteryData.soc || 0,
-                temperature: batteryData.temperature || 0,
-                hasError: batteryData.hasError || false,
-                errorMessage: batteryData.errorMessage || ''
-            });
-        }
-        return null;
-    }
-
-    getDistanceReading() {
-        const data = this.getLatestSensorData('distance');
-        if (data && data.data) {
-            return data.data.distance;
-        }
-        return null;
-    }
-
-    async startSensorStream(sensorType, intervalMs = 1000, callback = null) {
-        if (callback) {
-            this.registerSensorListener(sensorType, `stream_${Date.now()}`, callback);
-        }
-        return this._sendCommand('request', sensorType, {}, intervalMs);
-    }
-
-    isRobotOnline() {
-        return this.robotStatus.isConnected || false;
-    }
-
-    // Sequence control methods
-    async getSequences() {
-        try {
-            const result = await this._sendCommand('command', 'sequence', {
-                action: SequenceAction.LIST
-            });
-            if (result) {
-                // Wait for response and parse sequences
-                await this._waitForData(500);
-                const seqData = this.getLatestSensorData('sequence');
-                if (seqData && seqData.data && seqData.data.sequences) {
-                    return seqData.data.sequences.map(seq => new SequenceInfo({
-                        id: seq.id,
-                        name: seq.name,
-                        description: seq.description,
-                        stepCount: seq.stepCount,
-                        duration: seq.duration,
-                        isLoop: seq.isLoop,
-                        createdAt: seq.createdAt,
-                        componentUsage: seq.componentUsage
-                    }));
-                }
+        for (const [key, val] of Object.entries(angles)) {
+            const servoKey = `${prefix}${key.charAt(0).toUpperCase() + key.slice(1)}`;
+            if (SERVO_MAP[servoKey]) {
+                await this.controlServo(servoKey, val, speed, acc);
             }
-        } catch (error) {
-            console.error('Failed to get sequences:', error);
         }
-        return [];
+        return true;
     }
 
-    async playSequence(sequenceName = null, sequenceId = null) {
-        if (!sequenceName && !sequenceId) {
-            console.error('Either sequenceName or sequenceId must be provided');
-            return false;
+    async controlLeftHand(angles) { return this.controlHand('left', angles); }
+    async controlRightHand(angles) { return this.controlHand('right', angles); }
+
+    async _moveBase(left, right, acc = 50) {
+        // 5 bytes: left(i16-le), right(i16-le), acc(u8)
+        const payload = new Uint8Array(5);
+        const dv = new DataView(payload.buffer);
+        dv.setInt16(0, left, true);
+        dv.setInt16(2, right, true);
+        dv.setUint8(4, acc);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MOTOR_MOVE, payload));
+    }
+
+    async moveForward(speed = 100, duration = null) {
+        const res = await this._moveBase(speed, speed);
+        if (duration && res) {
+            setTimeout(() => this.stopMovement(), duration * 1000);
         }
+        return res;
+    }
 
+    async moveBackward(speed = 100, duration = null) {
+        return this.moveForward(-speed, duration);
+    }
+
+    async turnLeft(speed = 80, duration = null) {
+        const res = await this._moveBase(-speed, speed);
+        if (duration && res) setTimeout(() => this.stopMovement(), duration * 1000);
+        return res;
+    }
+
+    async turnRight(speed = 80, duration = null) {
+        return this.turnLeft(-speed, duration);
+    }
+
+    async stopMovement() { return this._moveBase(0, 0); }
+
+    // ============ GESTURES ============
+
+    async waveHello(speed = 150) {
+        await this.controlRightHand({ shoulderPitch: 90, elbow: -30, speed });
+        for (let i = 0; i < 3; i++) {
+            await this.controlServo('rightWrist', 30, speed);
+            await new Promise(r => setTimeout(r, 300));
+            await this.controlServo('rightWrist', -30, speed);
+            await new Promise(r => setTimeout(r, 300));
+        }
+        return this.resetToHomePosition();
+    }
+
+    async lookAround(speed = 100) {
+        await this.controlHead(45, 0, null, speed);
+        await new Promise(r => setTimeout(r, 1000));
+        await this.controlHead(-45, 0, null, speed);
+        await new Promise(r => setTimeout(r, 1000));
+        return this.controlHead(0, 0, null, speed);
+    }
+
+    async resetToHomePosition(speed = 100) {
+        await this.controlHead(0, 0, null, speed);
+        await this.controlLeftHand({ gripper: 0, wrist: 0, elbow: 0, shoulderPitch: 0, shoulderYaw: 0, shoulderRoll: 0, speed });
+        await this.controlRightHand({ gripper: 0, wrist: 0, elbow: 0, shoulderPitch: 0, shoulderYaw: 0, shoulderRoll: 0, speed });
+        return true;
+    }
+
+    // ============ SENSORS (BLE) ============
+
+    _requestData(dataType, mode, interval = 200) {
+        const payload = new Uint8Array(5);
+        const dv = new DataView(payload.buffer);
+        dv.setUint8(0, dataType);
+        dv.setUint8(1, mode);
+        dv.setUint16(2, interval, true);
+        dv.setUint8(4, 0);
+        return this._send(this._buildPacket(COMMAND_TYPES.CMD_DATA_REQUEST, payload));
+    }
+
+    readBattery() { return this._requestData(1, 0); }
+    readDistance() { return this._requestData(6, 0); }
+
+    startBatteryStream(interval = 1000, callback = null) {
+        if (callback) this.registerSensorListener('battery', '_stream_bat', callback);
+        return this._requestData(1, 1, interval);
+    }
+
+    startDistanceStream(interval = 200, callback = null) {
+        if (callback) this.registerSensorListener('distance', '_stream_dist', callback);
+        return this._requestData(6, 1, interval);
+    }
+
+    // ============ LED MATRIX (BLE) ============
+
+    async setDisplayText(text) {
+        const encoded = new TextEncoder().encode(text);
+        const payload = new Uint8Array(1 + encoded.length);
+        payload[0] = MatrixAction.SET_TEXT;
+        payload.set(encoded, 1);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    async setDisplayColor(r, g, b) {
+        const payload = new Uint8Array([MatrixAction.SET_COLOR, r, g, b]);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    async setDisplayAnimation(mode) {
+        const payload = new Uint8Array([MatrixAction.SET_ANIMATION, mode & 0xFF]);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    async setDisplayBrightness(val) {
+        const payload = new Uint8Array(5);
+        payload[0] = MatrixAction.SET_BRIGHTNESS;
+        new DataView(payload.buffer).setUint32(1, val, true);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    async setDisplaySpeed(val) {
+        const payload = new Uint8Array(5);
+        payload[0] = MatrixAction.SET_SPEED;
+        new DataView(payload.buffer).setUint32(1, val, true);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    async playDisplayAnimation() {
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([0x09])));
+    }
+
+    async pauseDisplayAnimation() {
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([0x0A])));
+    }
+
+    async clearDisplay() {
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([MatrixAction.CLEAR])));
+    }
+
+    async setDisplayPixel(x, y, r, g, b) {
+        const payload = new Uint8Array([MatrixAction.SET_PIXEL, x & 0xFF, y & 0xFF, r & 0xFF, g & 0xFF, b & 0xFF]);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    async setDisplayFrame(data) {
+        if (data.length !== 252) return false;
+        const payload = new Uint8Array(1 + data.length);
+        payload[0] = MatrixAction.SET_FRAME;
+        payload.set(data, 1);
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, payload));
+    }
+
+    // ============ APP BRIDGE METHODS (WebSocket) ============
+
+    _requireBridge(method) {
+        if (!this.bridge || !this.bridge.connected) {
+            throw new Error(`${method}() requires wsHost and BonicBot app running.`);
+        }
+    }
+
+    async speak(text) {
+        this._requireBridge('speak');
+        return this.bridge.send({
+            commandType: 'command', dataType: 'speak', payload: { text: text.trim() }
+        });
+    }
+
+    async playSequence(name = null, id = null) {
+        if (!name && !id) throw new Error('playSequence requires at least one of name or id');
+        this._requireBridge('playSequence');
         const payload = { action: SequenceAction.PLAY };
-        if (sequenceName) payload.name = sequenceName;
-        if (sequenceId) payload.id = sequenceId;
-
-        return this._sendCommand('command', 'sequence', payload);
+        if (name) payload.name = name;
+        if (id) payload.id = id;
+        return this.bridge.send({ commandType: 'command', dataType: 'sequence', payload });
     }
 
     async stopSequence() {
-        const payload = { action: SequenceAction.STOP };
-        return this._sendCommand('command', 'sequence', payload);
+        this._requireBridge('stopSequence');
+        return this.bridge.send({ commandType: 'command', dataType: 'sequence', payload: { action: SequenceAction.STOP } });
     }
 
     async pauseSequence() {
-        const payload = { action: SequenceAction.PAUSE };
-        return this._sendCommand('command', 'sequence', payload);
+        this._requireBridge('pauseSequence');
+        return this.bridge.send({ commandType: 'command', dataType: 'sequence', payload: { action: SequenceAction.PAUSE } });
     }
 
     async resumeSequence() {
-        const payload = { action: SequenceAction.RESUME };
-        return this._sendCommand('command', 'sequence', payload);
+        this._requireBridge('resumeSequence');
+        return this.bridge.send({ commandType: 'command', dataType: 'sequence', payload: { action: SequenceAction.RESUME } });
     }
 
-    async jumpToStep(stepIndex) {
-        const payload = {
-            action: SequenceAction.JUMPTO,
-            step: stepIndex
-        };
-        return this._sendCommand('command', 'sequence', payload);
+    async jumpToStep(index) {
+        this._requireBridge('jumpToStep');
+        return this.bridge.send({ commandType: 'command', dataType: 'sequence', payload: { action: SequenceAction.JUMPTO, step: index } });
     }
 
-    async getSequenceStatus() {
-        const payload = { action: SequenceAction.STATUS };
-        await this._sendCommand('command', 'sequence', payload);
-        return this.sequenceStatus;
-    }
-
-    // Camera control methods
     async startCameraStream() {
-        const payload = { action: CameraAction.START };
-        return this._sendCommand('command', 'camera', payload);
+        this._requireBridge('startCameraStream');
+        return this.bridge.send({ commandType: 'command', dataType: 'camera', payload: { action: CameraAction.START } });
     }
 
     async stopCameraStream() {
-        const payload = { action: CameraAction.STOP };
-        return this._sendCommand('command', 'camera', payload);
+        this._requireBridge('stopCameraStream');
+        return this.bridge.send({ commandType: 'command', dataType: 'camera', payload: { action: CameraAction.STOP } });
+    }
+
+    getSequenceStatus() { return this.sequenceStatus; }
+    getCameraStatus()   { return this.cameraStatus; }
+
+    async getSequences() {
+        this._requireBridge('getSequences');
+        this.bridge.send({ commandType: 'command', dataType: 'sequence', payload: { action: SequenceAction.LIST } });
+        await new Promise(r => setTimeout(r, 500));
+        const data = this._latestBridgeData['sequence'];
+        return (data && Array.isArray(data.sequences)) ? data.sequences : [];
     }
 
     async captureImage() {
-        const payload = { action: CameraAction.CAPTURE };
-        const result = await this._sendCommand('command', 'camera', payload);
-        if (result) {
-            await this._waitForData(1000);
-            const cameraData = this.getLatestSensorData('camera');
-            if (cameraData && cameraData.data && cameraData.data.imageData) {
-                const data = cameraData.data;
-                return new CapturedImage({
-                    imageData: data.imageData,
-                    format: data.format || 'jpeg',
-                    timestamp: data.timestamp || new Date().toISOString()
-                });
+        this._requireBridge('captureImage');
+        try {
+            const url = `http://${this.bridge.host}:8081/snapshot`;
+            const resp = await fetch(url);
+            const blob = await resp.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(new CapturedImage(base64));
+                };
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            console.error('Capture failed:', e);
+            return null;
+        }
+    }
+
+    // ============ DATA PARSING ============
+
+    _onBleData(data) {
+        // Simple binary protocol parser
+        let newBuffer = new Uint8Array(this._buffer.length + data.length);
+        newBuffer.set(this._buffer);
+        newBuffer.set(data, this._buffer.length);
+        this._buffer = newBuffer;
+
+        while (this._buffer.length >= 5) {
+            if (this._buffer[0] === 0xAA && this._buffer[1] === 0x55) {
+                const type = this._buffer[2];
+                const len = this._buffer[3] | (this._buffer[4] << 8);
+                if (this._buffer.length >= 5 + len) {
+                    const payload = this._buffer.slice(5, 5 + len);
+                    this._processBlePacket(type, payload);
+                    this._buffer = this._buffer.slice(5 + len);
+                } else break;
+            } else {
+                this._buffer = this._buffer.slice(1);
             }
         }
-        return null;
     }
 
-    async getCameraStatus() {
-        const payload = { action: CameraAction.STATUS };
-        await this._sendCommand('command', 'camera', payload);
-        return this.cameraStatus;
-    }
+    _processBlePacket(type, payload) {
+        const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
 
-    // Speaking/TTS methods
-    async speak(text) {
-        if (!text || !text.trim()) {
-            console.error('Text cannot be empty');
-            return false;
-        }
-
-        const payload = { text: text.trim() };
-        return this._sendCommand('command', 'speak', payload);
-    }
-
-    // High-level convenience methods
-    async waveHello(useRightHand = true, speed = 150.0) {
-        if (useRightHand) {
-            await this.controlRightHand({ shoulderPitch: 90 });
-            await this._wait(500);
-            for (let i = 0; i < 3; i++) {
-                await this.controlRightHand({ wrist: 45 });
-                await this._wait(300);
-                await this.controlRightHand({ wrist: -45 });
-                await this._wait(300);
+        if (type === RESPONSE_TYPES.RESP_ACK) {
+            // pong/ack — no action needed
+        } else if (type === RESPONSE_TYPES.RESP_BATTERY) {
+            if (payload.byteLength >= 12) {
+                this.latestSensorData.battery = new BatteryReading(
+                    dv.getFloat32(0, true),  // voltage
+                    dv.getFloat32(4, true),  // current
+                    dv.getFloat32(8, true),  // soc — float32, not uint16
+                );
+                this._notifyListeners('battery', this.latestSensorData.battery);
             }
-            await this.controlRightHand({ wrist: 0 });
-            await this.controlRightHand({ shoulderPitch: 0 });
-        } else {
-            await this.controlLeftHand({ shoulderPitch: 90 });
-            await this._wait(500);
-            for (let i = 0; i < 3; i++) {
-                await this.controlLeftHand({ wrist: 45 });
-                await this._wait(300);
-                await this.controlLeftHand({ wrist: -45 });
-                await this._wait(300);
+        } else if (type === RESPONSE_TYPES.RESP_DISTANCE) {
+            if (payload.byteLength >= 4) {
+                this.latestSensorData.distance = dv.getFloat32(0, true);
+                this._notifyListeners('distance', this.latestSensorData.distance);
             }
-            await this.controlLeftHand({ wrist: 0 });
-            await this.controlLeftHand({ shoulderPitch: 0 });
-        }
-        return true;
-    }
-
-    async lookAround(speed = 100.0) {
-        const positions = [[-45, 0], [45, 0], [0, 30], [0, -30], [0, 0]];
-        for (const [pan, tilt] of positions) {
-            await this.controlHead(pan, tilt);
-            await this._wait(1000);
-        }
-        return true;
-    }
-
-    async resetToHomePosition(speed = 100.0) {
-        // Head to center
-        await this.controlHead(0, 0);
-
-        // Both hands to neutral
-        await this.controlRightHand({
-            shoulderPitch: 0,
-            shoulderYaw: 0,
-            shoulderRoll: 0,
-            elbow: 0,
-            wrist: 0,
-            gripper: 0
-        });
-
-        await this.controlLeftHand({
-            shoulderPitch: 0,
-            shoulderYaw: 0,
-            shoulderRoll: 0,
-            elbow: 0,
-            wrist: 0,
-            gripper: 0
-        });
-
-        // Stop base movement
-        await this.stopMovement();
-        return true;
-    }
-
-    // Utility methods
-    async _wait(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async _waitForData(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // Message callback registration
-    onMessage(messageType, callback) {
-        if (!this.messageCallbacks[messageType]) {
-            this.messageCallbacks[messageType] = [];
-        }
-        this.messageCallbacks[messageType].push(callback);
-    }
-
-    offMessage(messageType, callback) {
-        if (this.messageCallbacks[messageType]) {
-            const index = this.messageCallbacks[messageType].indexOf(callback);
-            if (index > -1) {
-                this.messageCallbacks[messageType].splice(index, 1);
+        } else if (type === RESPONSE_TYPES.RESP_MOTOR_FEEDBACK) {
+            if (payload.byteLength >= 8) {
+                this.latestSensorData.base = {
+                    leftMotor:  { position: dv.getInt32(0, true), speed: payload.byteLength >= 12 ? dv.getFloat32(8,  true) : 0 },
+                    rightMotor: { position: dv.getInt32(4, true), speed: payload.byteLength >= 16 ? dv.getFloat32(12, true) : 0 },
+                };
+                this._notifyListeners('base', this.latestSensorData.base);
             }
+        } else if (type === RESPONSE_TYPES.RESP_SERVO_FEEDBACK) {
+            if (payload.byteLength >= 2) {
+                const groupId = payload[0];
+                const count   = payload[1];
+                const servoSize = 11; // id(1)+angle(f32)+speed(u16)+acc(u8)+load(u16)+temp(u8)
+                if (payload.byteLength >= 2 + count * servoSize) {
+                    const key = { 0: 'rightHand', 1: 'leftHand', 2: 'head' }[groupId] ?? 'unknown';
+                    const servos = {};
+                    for (let i = 0; i < count; i++) {
+                        const o = 2 + i * servoSize;
+                        const sid = payload[o];
+                        servos[sid] = {
+                            angle: dv.getFloat32(o + 1, true),
+                            speed: dv.getUint16(o + 5, true),
+                            acc:   payload[o + 7],
+                            load:  dv.getUint16(o + 8, true),
+                            temp:  payload[o + 10],
+                        };
+                    }
+                    this.latestSensorData[key] = servos;
+                    this._notifyListeners(key, servos);
+                }
+            }
+        }
+    }
+
+    _onBridgeMessage(msg) {
+        if (msg.type === 'welcome') {
+            this._applyStatusData(msg.robotStatus || {});
+        } else if (msg.type === 'robotUpdate') {
+            this._applyStatusData(msg.data || {});
+        } else if (msg.type === 'sequenceUpdate') {
+            const seq = msg.data || {};
+            if (Object.keys(seq).length) this.sequenceStatus = new SequenceStatus(seq);
+            this._notifyListeners('status', seq);
+        } else if (msg.type === 'response' && msg.success) {
+            if (msg.dataType) this._latestBridgeData[msg.dataType] = msg.result;
+        }
+    }
+
+    _applyStatusData(data) {
+        if (data.camera) this.cameraStatus = new CameraStatus(data.camera);
+        if (data.sequenceStatus) this.sequenceStatus = new SequenceStatus(data.sequenceStatus);
+        this._notifyListeners('status', data);
+    }
+
+    registerSensorListener(type, id, callback) {
+        if (!this.sensorListeners[type]) this.sensorListeners[type] = {};
+        this.sensorListeners[type][id] = callback;
+    }
+
+    _notifyListeners(type, data) {
+        if (this.sensorListeners[type]) {
+            Object.values(this.sensorListeners[type]).forEach(cb => cb(data));
         }
     }
 }
+
+export default BonicBotController;

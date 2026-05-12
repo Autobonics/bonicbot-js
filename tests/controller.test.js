@@ -1,288 +1,82 @@
 /**
- * Test suite for BonicBot controllers
+ * Test suite for Unified BonicBot Controller v3.0
  */
 
-import {
-    createWebSocketController,
-    createSerialController,
-    ServoID,
-    HeadModes,
-    ServoConstants
-} from '../src/index.js';
+import { BonicBotController, ServoID } from '../src/index.js';
 
-describe('BonicBot Controllers', () => {
+describe('BonicBot Unified Controller', () => {
+    let bot;
 
-    describe('WebSocket Controller', () => {
-        let robot;
-
-        beforeEach(() => {
-            robot = createWebSocketController('localhost', 8080);
-        });
-
-        afterEach(async () => {
-            if (robot && robot.isConnected()) {
-                await robot.close();
-            }
-        });
-
-        test('should create WebSocket controller with default values', () => {
-            expect(robot).toBeDefined();
-            expect(robot.host).toBe('localhost');
-            expect(robot.port).toBe(8080);
-            expect(robot.isConnected()).toBe(false);
-        });
-
-        test('should create WebSocket controller with custom values', () => {
-            const customRobot = createWebSocketController('192.168.1.100', 9090);
-            expect(customRobot.host).toBe('192.168.1.100');
-            expect(customRobot.port).toBe(9090);
-        });
-
-        test('should connect successfully', async () => {
-            const result = await robot.connect();
-            expect(result).toBe(true);
-            expect(robot.isConnected()).toBe(true);
-        });
-
-        test('should handle connection failure gracefully', async () => {
-            // Mock WebSocket to fail
-            const originalWebSocket = global.WebSocket;
-            global.WebSocket = jest.fn().mockImplementation(() => {
-                throw new Error('Connection failed');
-            });
-
-            const result = await robot.connect();
-            expect(result).toBe(false);
-            expect(robot.isConnected()).toBe(false);
-
-            // Restore WebSocket
-            global.WebSocket = originalWebSocket;
-        });
-
-        test('should control servo with valid parameters', async () => {
-            await robot.connect();
-            const result = await robot.controlServo(ServoID.HEAD_PAN, 45, 150);
-            expect(result).toBe(true);
-        });
-
-        test('should reject invalid servo angles', async () => {
-            await robot.connect();
-            const result = await robot.controlServo(ServoID.HEAD_PAN, 200); // Out of range
-            expect(result).toBe(false);
-        });
-
-        test('should control head with multiple parameters', async () => {
-            await robot.connect();
-            const result = await robot.controlHead(30, 15, HeadModes.HAPPY, 120);
-            expect(result).toBe(true);
-        });
-
-        test('should control right hand servos', async () => {
-            await robot.connect();
-            const result = await robot.controlRightHand({
-                gripper: 45,
-                wrist: 30,
-                elbow: -30,
-                shoulderPitch: 90
-            });
-            expect(result).toBe(true);
-        });
-
-        test('should control left hand servos', async () => {
-            await robot.connect();
-            const result = await robot.controlLeftHand({
-                gripper: -45,
-                wrist: -30,
-                shoulderPitch: 60
-            });
-            expect(result).toBe(true);
-        });
-
-        test('should perform movement commands', async () => {
-            await robot.connect();
-
-            expect(await robot.moveForward(100, 1)).toBe(true);
-            expect(await robot.moveBackward(80, 1)).toBe(true);
-            expect(await robot.turnLeft(60, 0.5)).toBe(true);
-            expect(await robot.turnRight(60, 0.5)).toBe(true);
-            expect(await robot.stopMovement()).toBe(true);
-        });
-
-        test('should handle speaking functionality', async () => {
-            await robot.connect();
-            const result = await robot.speak('Hello World');
-            expect(result).toBe(true);
-        });
-
-        test('should reject empty speech text', async () => {
-            await robot.connect();
-            const result = await robot.speak('');
-            expect(result).toBe(false);
-        });
-
-        test('should perform high-level actions', async () => {
-            await robot.connect();
-
-            expect(await robot.waveHello(true)).toBe(true);
-            expect(await robot.waveHello(false)).toBe(true);
-            expect(await robot.lookAround()).toBe(true);
-            expect(await robot.resetToHomePosition()).toBe(true);
-        });
-
-        test('should register sensor listeners', async () => {
-            await robot.connect();
-
-            const callback = jest.fn();
-            const result = robot.registerSensorListener('battery', 'test-listener', callback);
-            expect(result).toBe(true);
-        });
-
-        test('should start sensor streams', async () => {
-            await robot.connect();
-
-            const result = await robot.startSensorStream('battery', 1000);
-            expect(result).toBe(true);
-        });
-
-        test('should close connection properly', async () => {
-            await robot.connect();
-            expect(robot.isConnected()).toBe(true);
-
-            await robot.close();
-            expect(robot.isConnected()).toBe(false);
-        });
+    beforeEach(() => {
+        bot = new BonicBotController('TestBot', '1.2.3.4');
+        // Mock BLE transport
+        bot.ble = {
+            connect: jest.fn().mockResolvedValue(true),
+            send: jest.fn().mockResolvedValue(true),
+            disconnect: jest.fn().mockResolvedValue(true),
+            connected: true
+        };
+        // Mock WebSocket transport
+        bot.bridge = {
+            connect: jest.fn().mockResolvedValue(true),
+            send: jest.fn().mockResolvedValue(true),
+            disconnect: jest.fn().mockResolvedValue(true),
+            connected: true
+        };
     });
 
-    describe('Serial Controller', () => {
-        let robot;
-
-        beforeEach(() => {
-            robot = createSerialController({ baudrate: 115200 });
-        });
-
-        afterEach(async () => {
-            if (robot && robot.isConnected()) {
-                await robot.close();
-            }
-        });
-
-        test('should create Serial controller with default baudrate', () => {
-            const defaultRobot = createSerialController();
-            expect(defaultRobot).toBeDefined();
-            expect(defaultRobot.baudrate).toBe(115200);
-        });
-
-        test('should create Serial controller with custom baudrate', () => {
-            expect(robot.baudrate).toBe(115200);
-        });
-
-        test('should handle missing Web Serial API', async () => {
-            // Mock missing serial API
-            const originalSerial = global.navigator.serial;
-            delete global.navigator.serial;
-
-            await expect(robot.connect()).rejects.toThrow('Web Serial API is not supported');
-
-            // Restore serial API
-            global.navigator.serial = originalSerial;
-        });
-
-        test('should connect via Serial API', async () => {
-            const result = await robot.connect();
-            expect(result).toBe(true);
-            expect(robot.isConnected()).toBe(true);
-        });
-
-        test('should control servos via serial', async () => {
-            await robot.connect();
-            const result = await robot.controlServo(ServoID.RIGHT_GRIPPER, 45);
-            expect(result).toBe(true);
-        });
-
-        test('should handle movement via serial', async () => {
-            await robot.connect();
-            expect(await robot.moveForward(100)).toBe(true);
-            expect(await robot.stopMovement()).toBe(true);
-        });
-
-        test('should handle unsupported features gracefully', async () => {
-            await robot.connect();
-
-            // Serial mode doesn't support these features
-            expect(await robot.speak('test')).toBe(false);
-            expect(await robot.getSequences()).toEqual([]);
-        });
+    test('should initialize with correct parameters', () => {
+        expect(bot.deviceName).toBe('TestBot');
+        expect(bot.bridge).toBeDefined();
+        expect(bot.isConnected).toBe(true);
     });
 
-    describe('Servo Validation', () => {
-        test('should validate servo angles correctly', () => {
-            const { ServoCommand } = require('../src/types.js');
-
-            // Valid angles
-            const validCmd = new ServoCommand(ServoID.HEAD_PAN, 45);
-            expect(validCmd.validateAngle()).toBe(true);
-
-            // Invalid angles
-            const invalidCmd = new ServoCommand(ServoID.HEAD_PAN, 200);
-            expect(invalidCmd.validateAngle()).toBe(false);
-        });
-
-        test('should have correct servo limits', () => {
-            expect(ServoConstants.HEAD_PAN_MIN).toBe(-90);
-            expect(ServoConstants.HEAD_PAN_MAX).toBe(90);
-            expect(ServoConstants.HEAD_TILT_MIN).toBe(-38);
-            expect(ServoConstants.HEAD_TILT_MAX).toBe(45);
-        });
+    test('should control servo via BLE', async () => {
+        const result = await bot.controlServo('headPan', 45);
+        expect(result).toBe(true);
+        expect(bot.ble.send).toHaveBeenCalled();
+        
+        // Check binary packet structure (0xAA 0x55 type=0x03)
+        const packet = bot.ble.send.mock.calls[0][0];
+        expect(packet[0]).toBe(0xAA);
+        expect(packet[1]).toBe(0x55);
+        expect(packet[2]).toBe(0x03); // CMD_SERVO_SINGLE
     });
 
-    describe('Error Handling', () => {
-        test('should handle WebSocket connection errors', async () => {
-            const robot = createWebSocketController('invalid-host', 9999);
-
-            // Mock WebSocket to simulate connection error
-            global.WebSocket = jest.fn().mockImplementation(() => {
-                const ws = { close: jest.fn() };
-                setTimeout(() => {
-                    if (ws.onerror) ws.onerror(new Error('Connection failed'));
-                }, 0);
-                return ws;
-            });
-
-            const result = await robot.connect();
-            expect(result).toBe(false);
-        });
-
-        test('should handle commands when not connected', async () => {
-            const robot = createWebSocketController();
-
-            // Try commands without connecting
-            expect(await robot.controlServo(ServoID.HEAD_PAN, 0)).toBe(false);
-            expect(await robot.speak('test')).toBe(false);
-            expect(await robot.moveForward(100)).toBe(false);
-        });
+    test('should move base via BLE', async () => {
+        const result = await bot.moveForward(100);
+        expect(result).toBe(true);
+        const packet = bot.ble.send.mock.calls[0][0];
+        expect(packet[2]).toBe(0x02); // CMD_MOTOR_MOVE
     });
 
-    describe('Utility Functions', () => {
-        test('should detect browser capabilities', () => {
-            const { isSerialSupported, isWebSocketSupported } = require('../src/index.js');
+    test('should delegate speech to App Bridge', async () => {
+        await bot.speak("Hello");
+        expect(bot.bridge.send).toHaveBeenCalledWith(expect.objectContaining({
+            dataType: 'speak',
+            payload: { text: "Hello" }
+        }));
+    });
 
-            expect(isWebSocketSupported()).toBe(true); // Mocked in setup
-            expect(isSerialSupported()).toBe(true); // Mocked in setup
-        });
+    test('should throw error if bridge feature used without host', async () => {
+        const botNoHost = new BonicBotController('TestBot');
+        await expect(botNoHost.speak("Hello")).rejects.toThrow();
+    });
 
-        test('should return correct version', () => {
-            const { getVersion } = require('../src/index.js');
-            expect(getVersion()).toBe('2.0.1');
-        });
+    test('should update internal state on BLE data', () => {
+        // Mock a battery packet: 0xAA 0x55 0x01(type) 0x0A 0x00(len=10) ...
+        const payload = new Uint8Array(10);
+        const dv = new DataView(payload.buffer);
+        dv.setFloat32(0, 12.5, true); // voltage
+        dv.setFloat32(4, 1.2, true);  // current
+        dv.setUint16(8, 85, true);    // soc
+        
+        const packet = new Uint8Array(15);
+        packet.set([0xAA, 0x55, 0x01, 0x0A, 0x00]);
+        packet.set(payload, 5);
 
-        test('should return supported communication types', () => {
-            const { getSupportedCommunicationTypes } = require('../src/index.js');
-            const types = getSupportedCommunicationTypes();
-
-            expect(types).toHaveProperty('serial');
-            expect(types).toHaveProperty('websocket');
-            expect(typeof types.serial).toBe('boolean');
-            expect(typeof types.websocket).toBe('boolean');
-        });
+        bot._onBleData(packet);
+        expect(bot.latestSensorData.battery.soc).toBe(85);
+        expect(bot.latestSensorData.battery.voltage).toBe(12.5);
     });
 });

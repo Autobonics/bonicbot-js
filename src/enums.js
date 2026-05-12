@@ -2,17 +2,6 @@
  * Enumerations for BonicBot controller
  */
 
-/**
- * Communication interface types
- */
-export const CommunicationType = Object.freeze({
-    SERIAL: 'serial',
-    WEBSOCKET: 'websocket'
-});
-
-/**
- * Servo identifier enumeration for BonicBot
- */
 export const ServoID = Object.freeze({
     // Right hand servos
     RIGHT_GRIPPER: 'rightGripper',
@@ -35,11 +24,7 @@ export const ServoID = Object.freeze({
     HEAD_TILT: 'headTilt'
 });
 
-/**
- * Head expression modes
- */
 export const HeadModes = Object.freeze({
-    NONE: 'None',
     NORMAL: 'Normal',
     HAPPY: 'Happy',
     SAD: 'Sad',
@@ -48,27 +33,12 @@ export const HeadModes = Object.freeze({
     CONFUSED: 'Confused'
 });
 
-/**
- * Video streaming modes
- */
-export const VideoStreamMode = Object.freeze({
-    NONE: 'None',
-    ONE_WAY_FROM_ROBOT: 'OneWayFromRobot',
-    ONE_WAY_TO_ROBOT: 'OneWayToRobot',
-    TWO_WAY: 'TwoWay'
+// Single-byte integer IDs sent in the BLE head-mode packet
+export const HeadModeIds = Object.freeze({
+    'Normal': 1, 'Happy': 2, 'Sad': 3,
+    'Angry': 4, 'Surprised': 5, 'Confused': 6
 });
 
-/**
- * Motor types for base movement
- */
-export const MotorType = Object.freeze({
-    GEAR_MOTOR: 'GearMotor',
-    DDSM115: 'DDSM115'
-});
-
-/**
- * Sequence control actions
- */
 export const SequenceAction = Object.freeze({
     LIST: 'list',
     PLAY: 'play',
@@ -79,12 +49,20 @@ export const SequenceAction = Object.freeze({
     JUMPTO: 'jumpto'
 });
 
-/**
- * Camera control actions
- */
 export const CameraAction = Object.freeze({
     START: 'start',
     STOP: 'stop',
     CAPTURE: 'capture',
     STATUS: 'status'
+});
+
+export const MatrixAction = Object.freeze({
+    SET_TEXT: 0x01,
+    SET_COLOR: 0x02,
+    SET_ANIMATION: 0x03,
+    SET_BRIGHTNESS: 0x04,
+    SET_SPEED: 0x05,
+    CLEAR: 0x06,
+    SET_PIXEL: 0x07,
+    SET_FRAME: 0x08
 });
