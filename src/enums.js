@@ -62,7 +62,10 @@ export const MatrixAction = Object.freeze({
     SET_ANIMATION: 0x03,
     SET_BRIGHTNESS: 0x04,
     SET_SPEED: 0x05,
-    CLEAR: 0x06,
-    SET_PIXEL: 0x07,
-    SET_FRAME: 0x08
+    PLAY: 0x09,
+    PAUSE: 0x0A,
+    GET_STATUS: 0x0B,
+    SET_PIXEL: 0x0C,
+    CLEAR: 0x0D,
+    SET_FRAME: 0x0E
 });

@@ -246,11 +246,11 @@ class BonicBotController {
     }
 
     async playDisplayAnimation() {
-        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([0x09])));
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([MatrixAction.PLAY])));
     }
 
     async pauseDisplayAnimation() {
-        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([0x0A])));
+        return await this._send(this._buildPacket(COMMAND_TYPES.CMD_MATRIX_ACTION, new Uint8Array([MatrixAction.PAUSE])));
     }
 
     async clearDisplay() {
